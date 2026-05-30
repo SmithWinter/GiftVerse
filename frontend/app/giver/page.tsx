@@ -133,7 +133,7 @@ export default function GiverPage() {
           MVP
         </div>
         <h1 className="text-2xl font-semibold tracking-tight">Create a GiftVerse</h1>
-        <p className="text-sm text-zinc-300">
+        <p className="text-sm text-muted-foreground">
           Build the gift first. Generation and delivery are mocked for now.
         </p>
       </header>
@@ -141,10 +141,10 @@ export default function GiverPage() {
       <div className="grid gap-4">
         <Stepper currentIndex={stepIndex} />
 
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+        <div className="rounded-2xl border border-border/50 bg-card/40 p-6 backdrop-blur">
           <div className="flex flex-col gap-1">
             <div className="text-sm font-semibold">{step.title}</div>
-            <div className="text-sm text-zinc-300">{step.subtitle}</div>
+            <div className="text-sm text-muted-foreground">{step.subtitle}</div>
           </div>
 
           <div className="mt-6">
@@ -169,7 +169,7 @@ export default function GiverPage() {
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                  <div className="rounded-xl border border-border/60 bg-background/30 p-4">
                     <div className="flex items-center justify-between gap-4">
                       <div className="text-sm font-semibold">
                         Upload images{" "}
@@ -180,14 +180,14 @@ export default function GiverPage() {
                       {images.length > 0 ? (
                         <button
                           type="button"
-                          className="text-xs font-semibold text-zinc-300 hover:text-white"
+                          className="text-xs font-semibold text-muted-foreground hover:text-foreground"
                           onClick={() => setImages([])}
                         >
                           Clear
                         </button>
                       ) : null}
                     </div>
-                    <div className="mt-2 text-sm text-zinc-300">
+                    <div className="mt-2 text-sm text-muted-foreground">
                       {draft.generationMethod === "image"
                         ? "At least 1 image required."
                         : "Optional. If provided, the generator will use them as visual reference."}
@@ -210,7 +210,7 @@ export default function GiverPage() {
                         {imageUrls.map((u) => (
                           <div
                             key={u}
-                            className="aspect-square overflow-hidden rounded-xl border border-white/10 bg-black/40"
+                            className="aspect-square overflow-hidden rounded-xl border border-border/60 bg-background/30"
                           >
                             <img src={u} alt="" className="h-full w-full object-cover" />
                           </div>
@@ -321,9 +321,9 @@ export default function GiverPage() {
 
             {step.id === "preflight" && (
               <div className="grid gap-4">
-                <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                <div className="rounded-xl border border-border/60 bg-background/30 p-4">
                   <div className="text-sm font-semibold">15s structure</div>
-                  <div className="mt-2 grid gap-2 text-sm text-zinc-300">
+                  <div className="mt-2 grid gap-2 text-sm text-muted-foreground">
                     <Row label="Trust gate shows">{maskContact(draft.recipientContact)}</Row>
                     <Row label="Voucher">{formatGift(draft)}</Row>
                     <Row label="Method">
@@ -338,27 +338,27 @@ export default function GiverPage() {
                       {draft.mood || "—"} {draft.intent ? `• ${draft.intent}` : ""}
                     </Row>
                     <Row label="Timeline">
-                      <span className="text-zinc-200">0–13s</span> content •{" "}
-                      <span className="text-zinc-200">13–15s</span> closing •{" "}
-                      <span className="text-zinc-200">after video</span> redeem code
+                      <span className="text-foreground">0–13s</span> content •{" "}
+                      <span className="text-foreground">13–15s</span> closing •{" "}
+                      <span className="text-foreground">after video</span> redeem code
                     </Row>
                   </div>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                <div className="rounded-xl border border-border/60 bg-background/30 p-4">
                   <div className="text-sm font-semibold">Message highlight (9–13s)</div>
-                  <div className="mt-2 text-sm text-zinc-200">{draft.message || "—"}</div>
+                  <div className="mt-2 text-sm text-foreground">{draft.message || "—"}</div>
                 </div>
               </div>
             )}
 
             {step.id === "prompt" && (
               <div className="grid gap-4">
-                <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                <div className="rounded-xl border border-border/60 bg-background/30 p-4">
                   <div className="flex items-center justify-between gap-4">
                     <div className="text-sm font-semibold">Final prompt</div>
                     <button
                       type="button"
-                      className="text-xs font-semibold text-zinc-300 hover:text-white disabled:opacity-50"
+                      className="text-xs font-semibold text-muted-foreground hover:text-foreground disabled:opacity-50"
                       onClick={() => {
                         setDraft((prev) => ({ ...prev, promptFinal: buildPrompt(prev, images.length) }));
                         setPromptEdited(false);
@@ -368,7 +368,7 @@ export default function GiverPage() {
                       Regenerate
                     </button>
                   </div>
-                  <div className="mt-2 text-sm text-zinc-300">
+                  <div className="mt-2 text-sm text-muted-foreground">
                     Review and edit the exact prompt used for video generation.
                   </div>
                   <div className="mt-4">
@@ -380,7 +380,7 @@ export default function GiverPage() {
                       }}
                       placeholder="Final prompt will appear here."
                     />
-                    <div className="mt-2 text-xs text-zinc-400">
+                    <div className="mt-2 text-xs text-muted-foreground">
                       {draft.promptFinal.trim().length} chars • {draft.imageCount} image(s)
                     </div>
                   </div>
@@ -390,19 +390,19 @@ export default function GiverPage() {
 
             {step.id === "generate" && (
               <div className="grid gap-4">
-                <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                <div className="rounded-xl border border-border/60 bg-background/30 p-4">
                   <div className="flex items-center justify-between gap-4">
                     <div className="text-sm font-semibold">Generate video</div>
-                    <div className="text-xs text-zinc-400">Target: 15–60s</div>
+                    <div className="text-xs text-muted-foreground">Target: 15–60s</div>
                   </div>
-                  <div className="mt-2 text-xs text-zinc-400">
+                  <div className="mt-2 text-xs text-muted-foreground">
                     {draft.generationMethod === "image" ? "Image → video" : "Text → video"} •{" "}
                     {draft.imageCount} image(s)
                   </div>
                   <div className="mt-3">
                     <Progress value={isGenerating ? progress : createdGiftId ? 100 : 0} />
                   </div>
-                  <div className="mt-2 text-xs text-zinc-400">
+                  <div className="mt-2 text-xs text-muted-foreground">
                     {isGenerating
                       ? "Generating…"
                       : createdGiftId
@@ -692,7 +692,7 @@ function Input({
 }) {
   return (
     <input
-      className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white placeholder:text-zinc-500 focus:border-white/20 focus:outline-none"
+      className="h-11 w-full rounded-xl border border-input bg-background/40 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
@@ -711,7 +711,7 @@ function TextArea({
 }) {
   return (
     <textarea
-      className="min-h-[120px] w-full resize-none rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-white/20 focus:outline-none"
+      className="min-h-[120px] w-full resize-none rounded-xl border border-input bg-background/40 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
@@ -733,15 +733,15 @@ function Select({
   return (
     <select
       className={[
-        "h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm focus:border-white/20 focus:outline-none",
-        value ? "text-white" : "text-zinc-500",
+        "h-11 w-full rounded-xl border border-input bg-background/40 px-3 text-sm focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20",
+        value ? "text-foreground" : "text-muted-foreground",
       ].join(" ")}
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
       <option value="">{placeholder}</option>
       {options.map((opt) => (
-        <option key={opt} value={opt} className="text-zinc-950">
+        <option key={opt} value={opt}>
           {opt}
         </option>
       ))}
@@ -751,9 +751,9 @@ function Select({
 
 function Progress({ value }: { value: number }) {
   return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+    <div className="h-2 w-full overflow-hidden rounded-full bg-muted/30">
       <div
-        className="h-full rounded-full bg-white transition-[width]"
+        className="h-full rounded-full bg-primary transition-[width]"
         style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
       />
     </div>
@@ -763,7 +763,7 @@ function Progress({ value }: { value: number }) {
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="grid grid-cols-[120px_1fr] gap-3">
-      <div className="text-zinc-400">{label}</div>
+      <div className="text-muted-foreground">{label}</div>
       <div>{children}</div>
     </div>
   );

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { demoGift, loadGift, maskContact, type Gift } from "@/lib/giftverse";
+import AnimatedContent from "@/components/AnimatedContent";
 
 type Screen = "trust" | "not-you" | "open" | "watch" | "post";
 
@@ -12,6 +13,7 @@ export default function GiftReceiverPage() {
 
   const [gift, setGift] = useState<Gift | null>(null);
   const [screen, setScreen] = useState<Screen>("trust");
+  const [postKey, setPostKey] = useState(0);
 
   useEffect(() => {
     if (!giftId) return;
@@ -30,8 +32,8 @@ export default function GiftReceiverPage() {
 
   if (!gift) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-        <div className="text-sm text-zinc-300">Loading…</div>
+      <div className="rounded-2xl border border-border/50 bg-card/40 p-6 backdrop-blur">
+        <div className="text-sm text-muted-foreground">Loading…</div>
       </div>
     );
   }
@@ -39,32 +41,32 @@ export default function GiftReceiverPage() {
   return (
     <div className="grid gap-6">
       <header className="grid gap-2">
-        <div className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Receiver
         </div>
         <h1 className="text-2xl font-semibold tracking-tight">You received a gift</h1>
-        <div className="text-sm text-zinc-300">
-          Gift for <span className="text-white">{masked}</span>
+        <div className="text-sm text-muted-foreground">
+          Gift for <span className="text-foreground">{masked}</span>
         </div>
       </header>
 
       {screen === "trust" && (
         <Card>
           <div className="text-sm font-semibold">Trust gate</div>
-          <div className="mt-2 text-sm text-zinc-300">
-            This gift was sent to <span className="text-white">{masked}</span>. Is that you?
+          <div className="mt-2 text-sm text-muted-foreground">
+            This gift was sent to <span className="text-foreground">{masked}</span>. Is that you?
           </div>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <button
               type="button"
-              className="inline-flex h-11 items-center justify-center rounded-xl bg-white px-4 text-sm font-semibold text-zinc-950 hover:bg-zinc-200"
+              className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
               onClick={() => setScreen("open")}
             >
               Yes, that’s me
             </button>
             <button
               type="button"
-              className="inline-flex h-11 items-center justify-center rounded-xl border border-white/15 bg-white/5 px-4 text-sm font-semibold text-white hover:bg-white/10"
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-border/60 bg-background/30 px-4 text-sm font-semibold text-foreground hover:bg-muted/40"
               onClick={() => setScreen("not-you")}
             >
               Not me
@@ -76,13 +78,13 @@ export default function GiftReceiverPage() {
       {screen === "not-you" && (
         <Card>
           <div className="text-sm font-semibold">Protected</div>
-          <div className="mt-2 text-sm text-zinc-300">
+          <div className="mt-2 text-sm text-muted-foreground">
             For your safety, we can’t show the video or redeem QR unless you confirm you’re the intended recipient.
           </div>
           <div className="mt-6">
             <button
               type="button"
-              className="inline-flex h-11 items-center justify-center rounded-xl bg-white px-4 text-sm font-semibold text-zinc-950 hover:bg-zinc-200"
+              className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
               onClick={() => setScreen("trust")}
             >
               Back to trust gate
@@ -95,25 +97,25 @@ export default function GiftReceiverPage() {
         <div className="grid gap-4">
           <Card>
             <div className="text-sm font-semibold">Gift preview</div>
-            <div className="mt-3 grid gap-2 text-sm text-zinc-300">
+            <div className="mt-3 grid gap-2 text-sm text-muted-foreground">
               <Row label="Occasion">{gift.occasion || "—"}</Row>
               <Row label="Voucher">{formatGift(gift)}</Row>
               <Row label="Mood">{gift.mood || "—"}</Row>
               <Row label="Message">
-                <span className="text-white">{gift.message || "—"}</span>
+                <span className="text-foreground">{gift.message || "—"}</span>
               </Row>
             </div>
           </Card>
 
           <Card>
             <div className="text-sm font-semibold">Open gift</div>
-            <div className="mt-2 text-sm text-zinc-300">
+            <div className="mt-2 text-sm text-muted-foreground">
               Tap to start the 15s video. The redeem QR will appear after the video finishes.
             </div>
             <div className="mt-6">
               <button
                 type="button"
-                className="inline-flex h-11 items-center justify-center rounded-xl bg-white px-4 text-sm font-semibold text-zinc-950 hover:bg-zinc-200"
+                className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
                 onClick={() => {
                   setScreen("watch");
                 }}
@@ -129,65 +131,79 @@ export default function GiftReceiverPage() {
         <VideoStage
           gift={gift}
           initialMs={0}
-          onDone={() => setScreen("post")}
+          onDone={() => {
+            setPostKey(k => k + 1);
+            setScreen("post");
+          }}
           onExit={() => setScreen("open")}
         />
       )}
 
       {screen === "post" && (
         <div className="grid gap-4">
-          <Card>
-            <div className="text-sm font-semibold">Redeem</div>
-            <div className="mt-2 text-sm text-zinc-300">
-              Scan the QR or use the code below.
-            </div>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <QrCard code={gift.redeemCode} />
-              <div className="grid gap-3">
-                <button
-                  type="button"
-                  className="inline-flex h-11 items-center justify-center rounded-xl bg-white px-4 text-sm font-semibold text-zinc-950 hover:bg-zinc-200"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(gift.redeemCode);
-                    } catch {
-                      window.prompt("Copy this code:", gift.redeemCode);
-                    }
-                  }}
-                >
-                  Copy redeem code
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex h-11 items-center justify-center rounded-xl border border-white/15 bg-white/5 px-4 text-sm font-semibold text-white hover:bg-white/10"
-                  onClick={() => {
-                    setScreen("watch");
-                  }}
-                >
-                  Replay full video
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex h-11 items-center justify-center rounded-xl border border-white/15 bg-white/5 px-4 text-sm font-semibold text-white hover:bg-white/10"
-                  onClick={() => window.alert("Thanks sent (mock).")}
-                >
-                  Send thank you (mock)
-                </button>
+          <AnimatedContent
+            key={postKey}
+            autoPlay={false}
+            distance={80}
+            direction="vertical"
+            reverse={false}
+            scale={0.95}
+            duration={0.9}
+            ease="back.out(1.7)"
+          >
+            <Card>
+              <div className="text-sm font-semibold">Redeem</div>
+              <div className="mt-2 text-sm text-muted-foreground">
+                Scan the QR or use the code below.
               </div>
-            </div>
-          </Card>
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <QrCard code={gift.redeemCode} />
+                <div className="grid gap-3">
+                  <button
+                    type="button"
+                    className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(gift.redeemCode);
+                      } catch {
+                        window.prompt("Copy this code:", gift.redeemCode);
+                      }
+                    }}
+                  >
+                    Copy redeem code
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex h-11 items-center justify-center rounded-xl border border-border/60 bg-background/30 px-4 text-sm font-semibold text-foreground hover:bg-muted/40"
+                    onClick={() => {
+                      setScreen("watch");
+                    }}
+                  >
+                    Replay full video
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex h-11 items-center justify-center rounded-xl border border-border/60 bg-background/30 px-4 text-sm font-semibold text-foreground hover:bg-muted/40"
+                    onClick={() => window.alert("Thanks sent (mock).")}
+                  >
+                    Send thank you (mock)
+                  </button>
+                </div>
+              </div>
+            </Card>
+          </AnimatedContent>
 
           <Card>
             <div className="text-sm font-semibold">Back</div>
             <div className="mt-2 flex flex-col gap-3 sm:flex-row">
               <a
-                className="inline-flex h-11 items-center justify-center rounded-xl border border-white/15 bg-white/5 px-4 text-sm font-semibold text-white hover:bg-white/10"
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-border/60 bg-background/30 px-4 text-sm font-semibold text-foreground hover:bg-muted/40"
                 href="/giver"
               >
                 Create your own
               </a>
               <a
-                className="inline-flex h-11 items-center justify-center rounded-xl border border-white/15 bg-white/5 px-4 text-sm font-semibold text-white hover:bg-white/10"
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-border/60 bg-background/30 px-4 text-sm font-semibold text-foreground hover:bg-muted/40"
                 href="/"
               >
                 Home
@@ -244,27 +260,27 @@ function VideoStage({
       <Card>
         <div className="flex items-center justify-between gap-4">
           <div className="text-sm font-semibold">15s video</div>
-          <div className="text-xs text-zinc-400">{formatTime(ms)} / 15s</div>
+          <div className="text-xs text-muted-foreground">{formatTime(ms)} / 15s</div>
         </div>
         <div className="mt-3">
           <Progress value={(ms / durationMs) * 100} />
         </div>
       </Card>
 
-      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/10 to-black/40">
+      <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-b from-card/60 to-background/20 backdrop-blur">
         <div className="grid min-h-[440px] content-between p-6 sm:min-h-[520px]">
           <div className="grid gap-2">
-            <div className="text-xs font-semibold uppercase tracking-wider text-zinc-300">
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {segment.label}
             </div>
             <div className="text-2xl font-semibold tracking-tight">{segment.title}</div>
-            {segment.subtitle ? <div className="text-sm text-zinc-300">{segment.subtitle}</div> : null}
+            {segment.subtitle ? <div className="text-sm text-muted-foreground">{segment.subtitle}</div> : null}
           </div>
 
-          <div className="rounded-xl border border-white/10 bg-black/30 p-4 text-sm text-zinc-200">
+          <div className="rounded-xl border border-border/60 bg-background/30 p-4 text-sm text-muted-foreground">
             <div className="grid gap-1">
-              <div className="text-xs text-zinc-400">Message highlight</div>
-              <div className="text-white">{gift.message}</div>
+              <div className="text-xs text-muted-foreground">Message highlight</div>
+              <div className="text-foreground">{gift.message}</div>
             </div>
           </div>
         </div>
@@ -274,14 +290,14 @@ function VideoStage({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <button
             type="button"
-            className="inline-flex h-11 items-center justify-center rounded-xl border border-white/15 bg-white/5 px-4 text-sm font-semibold text-white hover:bg-white/10"
+            className="inline-flex h-11 items-center justify-center rounded-xl border border-border/60 bg-background/30 px-4 text-sm font-semibold text-foreground hover:bg-muted/40"
             onClick={onExit}
           >
             Exit
           </button>
           <button
             type="button"
-            className="inline-flex h-11 items-center justify-center rounded-xl bg-white px-4 text-sm font-semibold text-zinc-950 hover:bg-zinc-200"
+            className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
             onClick={() => {
               setMs(0);
               setPlaying(true);
@@ -304,9 +320,9 @@ function getSegment(ms: number): { label: string; title: string; subtitle: strin
 
 function Progress({ value }: { value: number }) {
   return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+    <div className="h-2 w-full overflow-hidden rounded-full bg-muted/30">
       <div
-        className="h-full rounded-full bg-white transition-[width]"
+        className="h-full rounded-full bg-primary transition-[width]"
         style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
       />
     </div>
@@ -324,13 +340,13 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function Card({ children }: { children: React.ReactNode }) {
-  return <div className="rounded-2xl border border-white/10 bg-white/5 p-6">{children}</div>;
+  return <div className="rounded-2xl border border-border/50 bg-card/40 p-6 backdrop-blur">{children}</div>;
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="grid grid-cols-[120px_1fr] gap-3">
-      <div className="text-zinc-400">{label}</div>
+      <div className="text-muted-foreground">{label}</div>
       <div>{children}</div>
     </div>
   );
@@ -343,14 +359,14 @@ function formatGift(gift: Gift): string {
 
 function QrCard({ code }: { code: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
-      <div className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+    <div className="rounded-2xl border border-border/60 bg-background/30 p-5 backdrop-blur">
+      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         QR
       </div>
       <div className="mt-3 flex items-center justify-center">
         <Qr code={code} />
       </div>
-      <div className="mt-4 text-center font-mono text-sm text-white">{code}</div>
+      <div className="mt-4 text-center font-mono text-sm text-foreground">{code}</div>
     </div>
   );
 }
