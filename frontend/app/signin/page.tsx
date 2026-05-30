@@ -56,14 +56,14 @@ export default function SignInPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          className="w-full h-11 rounded-xl bg-giftverse-gradient px-4 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
         >
           {loading ? 'Signing in...' : 'Sign In'}
         </button>
       </form>
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Don't have an account?{' '}
-        <Link href="/signup" className="text-primary hover:underline">
+        <Link href="/signup" className="text-giftverse-gradient hover:underline">
           Sign Up
         </Link>
       </p>
