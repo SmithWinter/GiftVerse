@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createGiftFromDraft, maskContact, saveGift, type GiftDraft, type Gift } from "@/lib/giftverse";
+import { useAuth } from "@/lib/auth-context";
+import { useRouter } from "next/navigation";
+import { createVideoJob, getVideoJob, uploadToCloudinary } from "@/lib/api";
 
 type StepId =
   | "recipient"
@@ -19,12 +22,35 @@ const steps: Array<{ id: StepId; title: string; subtitle: string }> = [
   { id: "director", title: "Director", subtitle: "Mood + intent" },
   { id: "preflight", title: "Preflight", subtitle: "Confirm 15s plan" },
   { id: "prompt", title: "Prompt", subtitle: "Review the final prompt" },
-  { id: "generate", title: "Generate & send", subtitle: "Mock delivery" },
+  { id: "generate", title: "Generate & send", subtitle: "Create video" },
 ];
 
+const HARDCODED_OCCASIONS = ["Birthday", "Anniversary", "Thank you", "Congrats", "Just because"];
+
+type VideoJob = {
+  id: string;
+  status: "QUEUED" | "GENERATING" | "UPLOADING" | "SUCCEEDED" | "FAILED" | string;
+  progress: number;
+  outputUrl?: string;
+  error?: string;
+};
+
+type GiftFromApi = {
+  id: number;
+  brand: string;
+  value: number;
+  description?: string;
+  imageUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export default function GiverPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+  
   const [stepIndex, setStepIndex] = useState(0);
-  const [gifts, setGifts] = useState<Gift[]>([]);
+  const [gifts, setGifts] = useState<GiftFromApi[]>([]);
   const [giftsLoading, setGiftsLoading] = useState<boolean>(true);
   const [draft, setDraft] = useState<GiftDraft>(() => ({
     generationMethod: "",
@@ -42,11 +68,21 @@ export default function GiverPage() {
   }));
 
   useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/signin');
+    }
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
     const fetchGifts = async () => {
       try {
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/gifts`);
         const data = await response.json();
-        setGifts(data);
+        const giftsWithNumbers = Array.isArray(data) ? data.map((g: any) => ({
+          ...g,
+          value: typeof g.value === 'string' ? parseFloat(g.value) : g.value,
+        })) : [];
+        setGifts(giftsWithNumbers);
       } catch (error) {
         console.error("Failed to fetch gifts:", error);
       } finally {
@@ -58,18 +94,22 @@ export default function GiverPage() {
 
   const [images, setImages] = useState<File[]>([]);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [cloudinaryUrls, setCloudinaryUrls] = useState<string[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
   const [promptEdited, setPromptEdited] = useState(false);
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [createdGiftId, setCreatedGiftId] = useState<string | null>(null);
   const [createdRedeemCode, setCreatedRedeemCode] = useState<string | null>(null);
+  const [videoJob, setVideoJob] = useState<VideoJob | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
   const step = steps[stepIndex] ?? steps[0];
 
   const errors = useMemo(() => validateDraft(draft, step.id), [draft, step.id]);
 
-  const canGoNext = errors.length === 0 && !isGenerating;
+  const canGoNext = errors.length === 0 && !isGenerating && !uploadingImages;
 
   useEffect(() => {
     setDraft((prev) => ({ ...prev, imageCount: images.length }));
@@ -81,6 +121,30 @@ export default function GiverPage() {
     return () => {
       next.forEach((u) => URL.revokeObjectURL(u));
     };
+  }, [images]);
+
+  useEffect(() => {
+    const uploadImages = async () => {
+      if (images.length === 0) {
+        setCloudinaryUrls([]);
+        return;
+      }
+
+      setUploadingImages(true);
+      try {
+        const urls = await Promise.all(
+          images.map((file) => uploadToCloudinary(file))
+        );
+        setCloudinaryUrls(urls);
+      } catch (error) {
+        console.error("Failed to upload images:", error);
+        alert("Không thể upload ảnh. Vui lòng thử lại.");
+      } finally {
+        setUploadingImages(false);
+      }
+    };
+
+    uploadImages();
   }, [images]);
 
   useEffect(() => {
@@ -106,32 +170,85 @@ function update<K extends keyof GiftDraft>(key: K, value: GiftDraft[K]) {
   }
 
   async function generateAndSend() {
-    if (isGenerating) return;
+    if (isGenerating || uploadingImages) return;
     const allErrors = validateDraft(draft, "generate");
     if (allErrors.length > 0) return;
+    if (images.length > 0 && cloudinaryUrls.length !== images.length) {
+      alert("Vui lòng đợi upload ảnh hoàn tất");
+      return;
+    }
 
     setIsGenerating(true);
     setProgress(0);
     setCreatedGiftId(null);
     setCreatedRedeemCode(null);
+    setVideoJob(null);
+    setVideoUrl(null);
 
-    const start = Date.now();
-    const durationMs = 2200;
-    const tick = () => {
-      const elapsed = Date.now() - start;
-      const p = Math.min(1, elapsed / durationMs);
-      setProgress(Math.round(p * 100));
-      if (p < 1) {
-        window.setTimeout(tick, 60);
-      } else {
-        const gift = createGiftFromDraft(draft);
-        saveGift(gift);
-        setCreatedGiftId(gift.id);
-        setCreatedRedeemCode(gift.redeemCode);
-        setIsGenerating(false);
+    try {
+      // Step 1: Create video job
+      const createResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/video-processor`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: draft.promptFinal,
+          userId: user?.id,
+          ratio: '9:16',
+          durationSeconds: 15,
+          imageUrl: cloudinaryUrls.length > 0 ? cloudinaryUrls[0] : undefined,
+        }),
+      });
+
+      if (!createResponse.ok) {
+        const errorText = await createResponse.text();
+        throw new Error(errorText || 'Failed to create video job');
       }
-    };
-    tick();
+
+      const { jobId, status } = await createResponse.json();
+      
+      // Step 2: Poll for job status
+      let currentJob: VideoJob | null = { id: jobId, status, progress: 0 };
+      setVideoJob(currentJob);
+
+      const pollInterval = setInterval(async () => {
+        try {
+          const statusResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/video-processor/${jobId}`);
+          if (!statusResponse.ok) {
+            throw new Error('Failed to check job status');
+          }
+
+          currentJob = await statusResponse.json();
+          setVideoJob(currentJob);
+          setProgress(currentJob.progress || 0);
+
+          if (currentJob.status === 'SUCCEEDED') {
+            clearInterval(pollInterval);
+            const finalVideoUrl = currentJob.outputUrl || currentJob.downloadUrl;
+            if (finalVideoUrl) {
+              setVideoUrl(finalVideoUrl);
+            }
+            const gift = createGiftFromDraft(draft, finalVideoUrl);
+            saveGift(gift);
+            setCreatedGiftId(gift.id);
+            setCreatedRedeemCode(gift.redeemCode);
+            setIsGenerating(false);
+          } else if (currentJob.status === 'FAILED') {
+            clearInterval(pollInterval);
+            throw new Error(currentJob.error || 'Video generation failed');
+          }
+        } catch (err) {
+          clearInterval(pollInterval);
+          console.error(err);
+        }
+      }, 3000); // Poll mỗi 3 giây để giảm tải server
+
+    } catch (error) {
+      console.error('Error generating video:', error);
+      alert(`Error: ${error instanceof Error ? error.message : 'An unexpected error occurred'}`);
+      setIsGenerating(false);
+    }
   }
 
   const shareUrl =
@@ -220,14 +337,25 @@ title="Image → video"
                       />
                     </div>
 
+                    {uploadingImages && (
+                      <div className="mt-4 text-sm text-amber-200">
+                        Đang upload ảnh lên Cloudinary...
+                      </div>
+                    )}
+
                     {imageUrls.length > 0 ? (
                       <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
-                        {imageUrls.map((u) => (
+                        {imageUrls.map((u, i) => (
                           <div
                             key={u}
-                            className="aspect-square overflow-hidden rounded-xl border border-border/60 bg-background/30"
+                            className="aspect-square overflow-hidden rounded-xl border border-border/60 bg-background/30 relative"
                           >
                             <img src={u} alt="" className="h-full w-full object-cover" />
+                            {cloudinaryUrls[i] && (
+                              <div className="absolute bottom-1 right-1 bg-green-500 text-white text-xs px-1 rounded">
+                                ✓
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -444,17 +572,33 @@ onChange={(v) => update("promptInput", v)}
                     {draft.generationMethod === "image" ? "Image → video" : "Text → video"} •{" "}
                     {draft.imageCount} image(s)
                   </div>
+                  {videoJob && (
+                    <div className="mt-2 text-sm">
+                      <div className="text-muted-foreground">Status: <span className="text-white">{videoJob.status}</span></div>
+                    </div>
+                  )}
                   <div className="mt-3">
                     <Progress value={isGenerating ? progress : createdGiftId ? 100 : 0} />
                   </div>
                   <div className="mt-2 text-xs text-muted-foreground">
                     {isGenerating
-                      ? "Generating…"
+                      ? "Generating… (this may take 2-5 minutes)"
                       : createdGiftId
                         ? "Ready"
                         : "Not started"}
                   </div>
                 </div>
+
+                {videoUrl && (
+                  <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                    <div className="text-sm font-semibold text-giftverse-gradient">Your video</div>
+                    <video
+                      src={videoUrl}
+                      controls
+                      className="mt-3 w-full rounded-lg"
+                    />
+                  </div>
+                )}
 
                 {createdGiftId && createdRedeemCode && (
                   <div className="rounded-xl border border-white/10 bg-black/30 p-4">
@@ -486,8 +630,15 @@ onChange={(v) => update("promptInput", v)}
                         href={createdGiftId ? `/gift/${createdGiftId}` : "/gift/demo"}
                       >
                         Open receiver view
-</a>
+                      </a>
                     </div>
+                  </div>
+                )}
+
+                {videoJob?.error && (
+                  <div className="rounded-xl border border-red-500/50 bg-red-500/10 p-4">
+                    <div className="text-sm font-semibold text-red-400">Error</div>
+                    <div className="mt-2 text-sm text-red-200">{videoJob.error}</div>
                   </div>
                 )}
               </div>
@@ -594,63 +745,25 @@ function formatGift(draft: GiftDraft): string {
   }).format(gift.value);
   const parts = [gift.brand, formattedValue].filter(Boolean);
   const core = parts.join(" • ");
-  return `${core || "—"}${draft.occasion ? ` • ${draft.occasion}` : ""}`;
+  return `${core || "—"}${(draft.occasion || "") ? ` • ${draft.occasion}` : ""}`;
 }
 
 function buildPrompt(draft: GiftDraft, imageCount: number): string {
-  const toLine = draft.recipientName.trim()
-    ? `To ${draft.recipientName.trim()}`
-    : `To ${maskContact(draft.recipientContact)}`;
-  const occasion = draft.occasion.trim();
-  const gift = draft.selectedGift;
-  const voucher = gift
-    ? [gift.brand, new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(gift.value)].filter(Boolean).join(" • ")
-    : "";
-  const mood = draft.mood.trim();
-  const intent = draft.intent.trim();
-  const detail = draft.detail.trim();
-  const extraPrompt = draft.promptInput.trim();
+  const occasion = (draft.occasion || "").trim();
+  const mood = (draft.mood || "").trim();
+  
+  let prompt = `${mood || "Cinematic"} gift video`;
+  if (occasion) prompt += ` for ${occasion}`;
+  if (draft.message.trim()) prompt += `. Message: ${draft.message.trim()}`;
+  
+  // Giới hạn độ dài và loại ký tự đặc biệt
+  prompt = prompt
+    .replace(/[\n\r\t\"']/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 200);
 
-  const intro = [
-    "Create a 15s vertical cinematic gift video.",
-    "",
-    "Structure:",
-    `- 0–2s: Title card (${toLine}${occasion ? ` • ${occasion}` : ""})`,
-    `- 2–9s: Mood sequence (${mood || "mood-driven"})`,
-    `- 9–13s: Message highlight (${draft.message.trim() || "short message"})`,
-    "- 13–15s: Clean closing (no QR inside the video)",
-    "- After video: show redeem QR/code screen (high contrast, scan-friendly)",
-  ].join("\n");
-
-  const contextParts = [
-    voucher ? `Voucher: ${voucher}` : "",
-    occasion ? `Occasion: ${occasion}` : "",
-    intent ? `Intent: ${intent}` : "",
-    detail ? `Personal detail: ${detail}` : "",
-  ].filter(Boolean);
-
-  const visualParts = [
-    draft.generationMethod === "image"
-      ? `Use the uploaded images as the primary visual source (${imageCount} image${imageCount === 1 ? "" : "s"}).`
-      : imageCount > 0
-        ? `Use the uploaded images as visual reference (${imageCount} image${imageCount === 1 ? "" : "s"}).`
-        : "No images provided; generate visuals purely from the prompt.",
-    extraPrompt ? `Extra prompt: ${extraPrompt}` : "",
-  ].filter(Boolean);
-
-  const constraints = [
-    "Constraints:",
-    "- Keep typography readable (mobile-first).",
-    "- Avoid cringe / overly sentimental tone.",
-"- Maintain clean transitions into the end-card.",
-  ].join("\n");
-
-  const blocks = [intro];
-  if (contextParts.length > 0) blocks.push(["", "Context:", ...contextParts.map((p) => `- ${p}`)].join("\n"));
-  if (visualParts.length > 0) blocks.push(["", "Visual direction:", ...visualParts.map((p) => `- ${p}`)].join("\n"));
-  blocks.push(["", constraints].join("\n"));
-
-  return blocks.join("\n");
+  return prompt;
 }
 
 function Stepper({ currentIndex }: { currentIndex: number }) {

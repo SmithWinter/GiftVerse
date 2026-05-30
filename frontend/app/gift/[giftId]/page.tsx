@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { loadGift, maskContact, type SentGift } from "@/lib/giftverse";
 import AnimatedContent from "@/components/AnimatedContent";
@@ -18,6 +18,7 @@ export default function GiftReceiverPage() {
   useEffect(() => {
     if (!giftId) return;
     const loaded = loadGift(giftId);
+    console.log("Loaded gift:", loaded); // Debug log
     setGift(loaded);
   }, [giftId]);
 
@@ -223,6 +224,62 @@ function VideoStage({
   onDone: () => void;
   onExit: () => void;
 }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = initialMs / 1000;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [initialMs]);
+
+  if (gift.videoUrl) {
+    return (
+      <div className="grid gap-4">
+        <Card>
+          <div className="flex items-center justify-between gap-4">
+            <div className="text-sm font-semibold text-giftverse-gradient">Your video</div>
+          </div>
+        </Card>
+
+        <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-b from-card/60 to-background/20 backdrop-blur">
+          <video
+            ref={videoRef}
+            src={gift.videoUrl}
+            controls
+            className="w-full"
+            onEnded={onDone}
+          />
+        </div>
+
+        <Card>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="button"
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-border/60 bg-background/30 px-4 text-sm font-semibold text-foreground hover:bg-muted/40"
+              onClick={onExit}
+            >
+              Exit
+            </button>
+            <button
+              type="button"
+              className="inline-flex h-11 items-center justify-center rounded-xl bg-giftverse-gradient px-4 text-sm font-semibold text-white hover:opacity-90"
+              onClick={() => {
+                if (videoRef.current) {
+                  videoRef.current.currentTime = 0;
+                  videoRef.current.play().catch(() => {});
+                }
+              }}
+            >
+              Restart
+            </button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // Fallback to mock if no videoUrl
   const durationMs = 15_000;
   const [ms, setMs] = useState(() => clamp(initialMs, 0, durationMs));
   const [playing, setPlaying] = useState(true);

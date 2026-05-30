@@ -29,6 +29,7 @@ export type SentGift = GiftDraft & {
   id: string;
   redeemCode: string;
   createdAtIso: string;
+  videoUrl?: string;
 };
 
 const STORAGE_KEY = "giftverse:gifts:v1";
@@ -51,7 +52,7 @@ export function maskContact(contact: string): string {
   return "****";
 }
 
-export function createGiftFromDraft(draft: GiftDraft): SentGift {
+export function createGiftFromDraft(draft: GiftDraft, videoUrl?: string): SentGift {
   const id = randomId();
   const redeemCode = `GV-${randomCode(8)}`;
   return {
@@ -59,6 +60,7 @@ export function createGiftFromDraft(draft: GiftDraft): SentGift {
     id,
     redeemCode,
     createdAtIso: new Date().toISOString(),
+    videoUrl,
   };
 }
 

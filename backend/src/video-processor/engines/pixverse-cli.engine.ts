@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { VideoJob } from '../video-processor.types';
 import type { GenerateVideoResult, VideoEngine } from './video-engine';
@@ -37,39 +37,95 @@ function findFirstStringDeep(
   return undefined;
 }
 
+function cleanOutputForJson(input: any): string {
+  // Nếu input đã là object, trả về stringify của nó
+  if (typeof input === 'object' && input !== null) {
+    return JSON.stringify(input);
+  }
+  
+  // Nếu không phải string, ép về string
+  let output = String(input);
+  
+  // Loại bỏ ANSI color codes và các ký tự điều khiển
+  let cleaned = output
+    .replace(/\x1B\[[0-9;]*[mGKH]/g, '') // Loại bỏ color codes
+    .replace(/\x07/g, '') // Loại bỏ bell
+    .replace(/\r/g, '') // Loại bỏ carriage return
+    .replace(/\x1B\[.*?[a-zA-Z]/g, ''); // Loại bỏ các ANSI sequence khác
+
+  // Tìm phần bắt đầu bằng { hoặc [
+  const jsonStart = cleaned.indexOf('{');
+  const jsonArrStart = cleaned.indexOf('[');
+  let startIdx = -1;
+  
+  if (jsonStart !== -1 && jsonArrStart !== -1) {
+    startIdx = Math.min(jsonStart, jsonArrStart);
+  } else if (jsonStart !== -1) {
+    startIdx = jsonStart;
+  } else if (jsonArrStart !== -1) {
+    startIdx = jsonArrStart;
+  }
+  
+  if (startIdx === -1) return cleaned;
+  
+  // Tìm phần kết thúc bằng } hoặc ]
+  let braceCount = 0;
+  let bracketCount = 0;
+  let endIdx = -1;
+  let inJson = false;
+  
+  for (let i = startIdx; i < cleaned.length; i++) {
+    const char = cleaned[i];
+    if (char === '{') { braceCount++; inJson = true; }
+    if (char === '[') { bracketCount++; inJson = true; }
+    if (char === '}') braceCount--;
+    if (char === ']') bracketCount--;
+    
+    if (inJson && braceCount === 0 && bracketCount === 0) {
+      endIdx = i + 1;
+      break;
+    }
+  }
+  
+  if (endIdx === -1) return cleaned.slice(startIdx);
+  
+  return cleaned.slice(startIdx, endIdx);
+}
+
 async function runJsonCommand(
   args: string[],
   options: { cwd: string; env?: NodeJS.ProcessEnv },
 ): Promise<JsonValue> {
   return new Promise((resolve, reject) => {
     const isWindows = process.platform === 'win32';
+    const pixverseBin = process.env.PIXVERSE_BIN || 'pixverse';
 
-    // Trên Windows, nối toàn bộ lệnh làm 1 string để truyền cho shell
-    // Trên Unix-like, dùng args riêng
-    let cmd: string;
-    let cmdArgs: string[];
-
+    let fullCommand: string;
+    
     if (isWindows) {
-      cmd = ['pixverse', ...args]
-        .map((arg) => {
-          if (arg.includes(' ') || arg.includes('"')) {
-            return `"${arg.replace(/"/g, '\\"')}"`;
-          }
-          return arg;
-        })
-        .join(' ');
-      cmdArgs = [];
-      console.log(`[pixverse] run (Windows): ${cmd}`);
+      // Trên Windows, nối toàn bộ lệnh làm 1 string
+      fullCommand = `${pixverseBin} ${args.map(arg => {
+        if (arg.includes(' ') || arg.includes('"') || arg.includes('\'')) {
+          return `"${arg.replace(/"/g, '\\"')}"`;
+        }
+        return arg;
+      }).join(' ')}`;
+      console.log(`[pixverse] run (Windows): ${fullCommand}`);
     } else {
-      cmd = 'pixverse';
-      cmdArgs = args;
-      console.log(`[pixverse] run: ${cmd} ${cmdArgs.join(' ')}`);
+      // Trên Unix, dùng cmd và args riêng
+      fullCommand = `${pixverseBin} ${args.join(' ')}`;
+      console.log(`[pixverse] run: ${fullCommand}`);
     }
 
-    const child = spawn(cmd, cmdArgs, {
+    const child = spawn(fullCommand, [], {
       cwd: options.cwd,
-      env: { ...process.env, ...options.env },
-      shell: isWindows,
+      env: { 
+        ...process.env, 
+        ...options.env,
+        NO_COLOR: '1', // Tắt màu output
+        FORCE_COLOR: '0'
+      },
+      shell: true, // Bắt buộc dùng shell
       windowsHide: true,
     });
 
@@ -94,15 +150,49 @@ async function runJsonCommand(
         );
         return;
       }
-      const trimmed = stdout.trim();
-      if (!trimmed) {
+      
+      console.log(`[pixverse] raw stdout: ${JSON.stringify(stdout)}`);
+      console.log(`[pixverse] raw stderr: ${JSON.stringify(stderr)}`);
+      
+      // Giải mã stdout trước: xử lý trường hợp JSON lồng nhau
+      let processedStdout = stdout;
+      
+      // Thử parse nhiều lần cho đến khi không còn được nữa
+      for (let i = 0; i < 3; i++) {
+        const trimmed = processedStdout.trim();
+        if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+          try {
+            processedStdout = JSON.parse(trimmed);
+          } catch {
+            break;
+          }
+        } else {
+          break;
+        }
+      }
+      
+      // Nếu processedStdout đã là object, trả về trực tiếp!
+      if (typeof processedStdout === 'object' && processedStdout !== null) {
+        console.log(`[pixverse] already an object: ${JSON.stringify(processedStdout)}`);
+        resolve(processedStdout as JsonValue);
+        return;
+      }
+      
+      const cleaned = cleanOutputForJson(processedStdout);
+      console.log(`[pixverse] cleaned output: ${JSON.stringify(cleaned)}`);
+      
+      if (!cleaned) {
         reject(new Error('pixverse cli returned empty output'));
         return;
       }
+      
       try {
-        resolve(JSON.parse(trimmed) as JsonValue);
-      } catch {
-        reject(new Error(`pixverse cli did not return valid JSON: ${trimmed}`));
+        resolve(JSON.parse(cleaned) as JsonValue);
+        return;
+      } catch (parseError) {
+        console.error(`[pixverse] parse error: ${parseError}`);
+        console.error(`[pixverse] cleaned content: ${JSON.stringify(cleaned)}`);
+        reject(new Error(`pixverse cli did not return valid JSON: ${JSON.stringify(cleaned)}`));
       }
     });
   });
@@ -116,11 +206,20 @@ export class PixverseCliEngine implements VideoEngine {
     params: { jobDir: string },
     onProgress?: (progress: number) => void,
   ): Promise<GenerateVideoResult> {
-    const promptFinal = job.promptFinal;
+    let promptFinal = job.promptFinal;
     if (!promptFinal) throw new Error('prompt_final is missing');
+    
+    // Làm sạch prompt: loại bỏ ký tự đặc biệt, xuống dòng, quote
+    promptFinal = promptFinal
+      .replace(/[\n\r\t"]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 500); // Giới hạn 500 ký tự
+      
     console.log(
       `[pixverse] job=${job.id} ratio=${job.ratio} duration=${job.durationSeconds} promptFinalLen=${promptFinal.length} imageUrl=${job.imageUrl || 'none'}`,
     );
+    console.log(`[pixverse] cleaned prompt: ${promptFinal}`);
 
     // Step 1: Create video with --no-wait
     const createArgs: string[] = [
@@ -135,7 +234,7 @@ export class PixverseCliEngine implements VideoEngine {
       '--aspect-ratio',
       job.ratio,
       '--duration',
-      String(job.durationSeconds),
+      String(Math.min(10, job.durationSeconds)), // Giới hạn max 10s
       '--no-wait',
       '--json',
     ];

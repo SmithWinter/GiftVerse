@@ -8,6 +8,7 @@ import { pipeline } from 'node:stream/promises';
 import { PromptRewriteService } from './prompt-rewrite.service';
 import { PixverseCliEngine } from './engines/pixverse-cli.engine';
 import { PixversePipelineEngine } from './engines/pixverse-pipeline.engine';
+import { MockEngine } from './engines/mock.engine';
 import type { VideoEngine } from './engines/video-engine';
 import type {
   CreateVideoProcessorRequest,
@@ -15,7 +16,7 @@ import type {
   VideoJobStatus,
 } from './video-processor.types';
 
-type EngineType = 'pixverse-cli' | 'pixverse-pipeline';
+type EngineType = 'pixverse-cli' | 'pixverse-pipeline' | 'mock';
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -25,8 +26,9 @@ function clampNumber(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function sanitizePathSegment(value: string): string {
-  const trimmed = value.trim();
+function sanitizePathSegment(value: unknown): string {
+  const strValue = String(value ?? '');
+  const trimmed = strValue.trim();
   if (!trimmed) return 'anonymous';
   return trimmed.replace(/[^a-zA-Z0-9-_]/g, '-').slice(0, 80) || 'anonymous';
 }
@@ -240,6 +242,7 @@ export class VideoProcessorService {
     const engineType = (process.env.VIDEO_ENGINE ??
       'pixverse-cli') as EngineType;
     if (engineType === 'pixverse-pipeline') return new PixversePipelineEngine();
+    if (engineType === 'mock') return new MockEngine();
     return new PixverseCliEngine();
   }
 
