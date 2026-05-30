@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
+import { VideoProcessorModule } from './video-processor/video-processor.module';
 import { User } from './user/user.entity';
 
 @Module({
@@ -10,8 +11,10 @@ import { User } from './user/user.entity';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
+      // eslint-disable-next-line @typescript-eslint/require-await
       useFactory: async (configService: ConfigService) => ({
         type: 'mysql',
         host: configService.get<string>('DATABASE_HOST'),
@@ -30,6 +33,7 @@ import { User } from './user/user.entity';
     }),
     UserModule,
     AuthModule,
+    VideoProcessorModule,
   ],
   controllers: [],
   providers: [],
