@@ -114,6 +114,7 @@ export class PixverseCliEngine implements VideoEngine {
   async generate(
     job: VideoJob,
     params: { jobDir: string },
+    onProgress?: (progress: number) => void,
   ): Promise<GenerateVideoResult> {
     const promptFinal = job.promptFinal;
     if (!promptFinal) throw new Error('prompt_final is missing');
@@ -121,7 +122,8 @@ export class PixverseCliEngine implements VideoEngine {
       `[pixverse] job=${job.id} ratio=${job.ratio} duration=${job.durationSeconds} promptFinalLen=${promptFinal.length} imageUrl=${job.imageUrl || 'none'}`,
     );
 
-    const args: string[] = [
+    // Step 1: Create video with --no-wait
+    const createArgs: string[] = [
       'create',
       'video',
       '--prompt',
@@ -134,43 +136,98 @@ export class PixverseCliEngine implements VideoEngine {
       job.ratio,
       '--duration',
       String(job.durationSeconds),
+      '--no-wait',
       '--json',
     ];
 
     if (job.imageUrl) {
-      args.push('--image', job.imageUrl);
+      createArgs.push('--image', job.imageUrl);
     }
 
-    const resultJson = await runJsonCommand(args, { cwd: params.jobDir });
+    const createResult = await runJsonCommand(createArgs, {
+      cwd: params.jobDir,
+    });
 
-    if (!isRecord(resultJson)) {
+    if (!isRecord(createResult)) {
       throw new Error('pixverse cli returned invalid result');
     }
 
-    const videoUrl = resultJson['video_url'] as string;
+    const videoId = this.extractVideoId(createResult);
+    if (!videoId) {
+      await writeFile(
+        join(params.jobDir, 'pixverse.create.json'),
+        JSON.stringify(createResult, null, 2),
+        'utf8',
+      );
+      throw new Error('Cannot extract video_id from pixverse output');
+    }
+
+    console.log(`[pixverse] submitted: job=${job.id} videoId=${videoId}`);
+    if (onProgress) onProgress(0);
+
+    // Step 2: Poll for status until completed
+    let statusResult: any;
+    let progress = 0;
+    const maxPolls = 200;
+    const pollIntervalMs = 3000;
+    let pollCount = 0;
+
+    while (pollCount < maxPolls) {
+      pollCount++;
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+
+      statusResult = await runJsonCommand(
+        ['task', 'status', String(videoId), '--json'],
+        { cwd: params.jobDir },
+      );
+
+      if (!isRecord(statusResult)) continue;
+
+      const status = statusResult['status'] as string;
+      console.log(`[pixverse] status: job=${job.id} status=${status}`);
+
+      // Estimate progress based on status
+      if (status === 'Submitted' || status === 'submitted') {
+        progress = 10;
+      } else if (status === 'Generating' || status === 'processing') {
+        // Simulate gradual progress from 10% to 90%
+        progress = Math.min(90, 10 + Math.floor((pollCount / maxPolls) * 80));
+      } else if (status === 'Completed' || status === 'completed') {
+        progress = 100;
+      }
+
+      if (onProgress) onProgress(progress);
+
+      if (status === 'Completed' || status === 'completed') {
+        break;
+      } else if (status === 'Failed' || status === 'failed') {
+        throw new Error(
+          `Pixverse generation failed: ${JSON.stringify(statusResult)}`,
+        );
+      }
+    }
+
+    if (
+      !statusResult ||
+      !(
+        statusResult['status'] === 'Completed' ||
+        statusResult['status'] === 'completed'
+      )
+    ) {
+      throw new Error('Pixverse generation timed out');
+    }
+
+    // Step 3: Download the video (or use direct video_url if available)
+    const videoUrl = statusResult['video_url'] as string;
     if (videoUrl) {
       console.log(`[pixverse] completed: job=${job.id} url=${videoUrl}`);
       return { outputUrl: videoUrl };
     }
 
-    const videoId = this.extractVideoId(resultJson);
-    if (!videoId) {
-      await writeFile(
-        join(params.jobDir, 'pixverse.create.json'),
-        JSON.stringify(resultJson, null, 2),
-        'utf8',
-      );
-      throw new Error(
-        'Cannot extract video_id or video_url from pixverse output',
-      );
-    }
-
-    console.log(`[pixverse] waiting: job=${job.id} videoId=${videoId}`);
-
-    await runJsonCommand(['task', 'wait', videoId, '--json'], {
-      cwd: params.jobDir,
-    });
-
+    // Fallback to asset download if video_url not in status
+    console.log(
+      `[pixverse] downloading asset: job=${job.id} videoId=${videoId}`,
+    );
     const downloadDir = join(params.jobDir, 'pixverse');
     await mkdir(downloadDir, { recursive: true });
 
@@ -207,6 +264,7 @@ export class PixverseCliEngine implements VideoEngine {
     const direct =
       (value['video_id'] as unknown) ??
       value['videoId'] ??
+      value['id'] ??
       (isRecord(value['Resp']) ? value['Resp']['video_id'] : undefined);
 
     if (typeof direct === 'string' && direct.trim()) return direct.trim();

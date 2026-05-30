@@ -64,7 +64,7 @@ export class VideoProcessorService {
     const userId = sanitizePathSegment(request.userId ?? 'anonymous');
     const ratio = request.ratio ?? '16:9';
     const locale = request.locale ?? 'en';
-    const durationSeconds = clampNumber(request.durationSeconds ?? 8, 1, 15);
+    const durationSeconds = clampNumber(request.durationSeconds ?? 15, 1, 15);
 
     const id = randomUUID();
     const job: VideoJob = {
@@ -78,6 +78,7 @@ export class VideoProcessorService {
       locale,
       durationSeconds,
       imageUrl: request.imageUrl,
+      progress: 0,
     };
 
     this.logger.log(
@@ -101,7 +102,7 @@ export class VideoProcessorService {
     const userId = sanitizePathSegment(request.userId ?? 'anonymous');
     const ratio = request.ratio ?? '16:9';
     const locale = request.locale ?? 'en';
-    const durationSeconds = clampNumber(request.durationSeconds ?? 8, 1, 15);
+    const durationSeconds = clampNumber(request.durationSeconds ?? 15, 1, 15);
 
     const spec = this.promptRewrite.normalizeToSpec(prompt, {
       ...request,
@@ -204,6 +205,9 @@ export class VideoProcessorService {
         { ...job, promptFinal },
         {
           jobDir,
+        },
+        (progress: number) => {
+          this.updateJob(job.id, { progress });
         },
       );
 

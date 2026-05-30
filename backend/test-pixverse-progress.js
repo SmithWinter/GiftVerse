@@ -3,7 +3,7 @@ const { spawn } = require('node:child_process');
 const testImageUrl = 'https://res.cloudinary.com/dqnpdbxes/image/upload/v1780125167/cld-sample-5.jpg';
 const testPrompt = 'Create a cinematic 8-second video of this scene with warm lighting, slow camera movement, and subtle film grain';
 
-console.log('🧪 Testing PixVerse with --no-wait and progress tracking...');
+console.log('🧪 Testing Pixverse with --no-wait and progress tracking...');
 console.log('');
 
 async function runCommand(args) {
@@ -57,35 +57,39 @@ async function testProgress() {
     '--aspect-ratio',
     '16:9',
     '--duration',
-    '8',
+    '15',
     '--no-wait',
     '--json',
   ];
 
   const createResult = await runCommand(createArgs);
   console.log('   ✅ Created! Result:', JSON.stringify(createResult, null, 2));
-  const videoId = createResult.video_id;
+  const videoId = createResult.id || createResult.video_id;
   console.log('   🎬 Video ID:', videoId);
-
-  // Step 2: Poll for status until complete
   console.log('');
-  console.log('2️⃣  Polling for status...');
 
+  // Step 2: Poll for status until completed
+  console.log('2️⃣  Polling for status...');
   let completed = false;
   let attempts = 0;
-  const maxAttempts = 100;
+  const maxAttempts = 200;
 
   while (!completed && attempts < maxAttempts) {
     attempts++;
     await new Promise(r => setTimeout(r, 3000));
 
     const statusResult = await runCommand(['task', 'status', videoId, '--json']);
-    console.log(`   [${attempts}]`, JSON.stringify(statusResult, null, 2));
+    const status = statusResult.status;
+    const progress = status === 'Submitted' ? 10 : status === 'Generating' ? Math.min(90, 10 + Math.floor((attempts / maxAttempts) * 80)) : status === 'Completed' ? 100 : 0;
 
-    if (statusResult.status === 'completed') {
+    console.log(`   [${attempts}/${maxAttempts}] Status: ${status}, Estimated Progress: ${progress}%`);
+
+    if (status === 'Completed') {
       console.log('');
-      console.log('🎉 Done! Result:', JSON.stringify(statusResult, null, 2));
+      console.log('🎉 Done! Final Result:', JSON.stringify(statusResult, null, 2));
       completed = true;
+    } else if (status === 'Failed') {
+      throw new Error('Generation failed: ' + JSON.stringify(statusResult));
     }
   }
 }
