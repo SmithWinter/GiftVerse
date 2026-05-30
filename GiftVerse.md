@@ -10,6 +10,12 @@ Các biến môi trường hiện có:
 - `DB_ENDPOINT`: host (hoặc host:port) MySQL.
 - `USER`: user đăng nhập MySQL.
 - `PASSWORD`: mật khẩu MySQL.
+- `VIDEO_ENGINE`: engine tạo video (`pixverse-cli` hoặc `pixverse-pipeline`). Mặc định: `pixverse-cli`.
+- `PIXVERSE_BIN`: đường dẫn command PixVerse CLI. Mặc định: `pixverse`.
+- `VIDEO_MAX_CONCURRENCY`: số job video chạy song song. Mặc định: `1`.
+- `VIDEO_JOBS_DIR`: thư mục lưu artifacts của job (ví dụ `project.yaml`). Optional.
+- `VIDEO_PUBLIC_UPLOADS_ROOT`: override path uploads public. Mặc định: `frontend/public/uploads`.
+- `PIXVERSE_PIPELINE_ROOT`: path tới repo `pixverse-character-pipeline` (khi dùng `pixverse-pipeline`).
 
 Ví dụ:
 ```
@@ -18,6 +24,9 @@ DB_NAME=giftverse
 DB_ENDPOINT=localhost
 USER=root
 PASSWORD=change_me
+VIDEO_ENGINE=pixverse-cli
+PIXVERSE_BIN=pixverse
+VIDEO_MAX_CONCURRENCY=1
 ```
 
 ### 1) Mục tiêu MVP
@@ -54,6 +63,33 @@ Trạng thái job (gợi ý):
 Fail-safe gợi ý:
 - Nếu generation fail: fallback về video template theo dịp (vẫn giữ end-card QR), hoặc giảm quality/model để retry.
 - Nếu render fail: vẫn trả về asset video thô từ PixVerse (không Remotion) nếu có.
+
+### 1.1.1) PixVerse CLI — Luồng tự động (MVP)
+Mục tiêu: tự động hoá text-to-video từ backend, đảm bảo có `job_id`, theo dõi trạng thái, và lưu MP4 vào public để frontend dùng URL tương đối.
+
+Chuẩn bị:
+- Cài PixVerse CLI trên máy chạy backend (Node.js >= 20, có subscription).
+- Login một lần: `pixverse auth login` (CLI lưu token local, sẽ hết hạn theo thời gian; khi hết hạn cần login lại).
+
+API (backend):
+- `POST /video-processor` (body: `prompt`, optional: `userId`, `ratio`, `locale`, `durationSeconds`, `dryRun`)
+- `GET /video-processor/:jobId` (trả `status`, `outputUrl`, `error`, ...)
+
+Flow nội bộ (PixVerse CLI):
+1) Nhận prompt người dùng → normalize + rewrite thành `prompt_final`.
+2) Gọi PixVerse tạo task (không chờ):
+   - `pixverse create video --prompt "<prompt_final>" --model v6 --quality 720p --aspect-ratio <ratio> --no-wait --json`
+3) Poll/wait tới khi xong:
+   - `pixverse task wait <video_id> --json`
+4) Download asset:
+   - `pixverse asset download <video_id> --dest <job_dir>/pixverse --json`
+5) Persist vào public uploads để frontend serve được:
+   - copy/download MP4 → `frontend/public/uploads/<userId>/<jobId>.mp4`
+   - set `outputUrl` = `/uploads/<userId>/<jobId>.mp4`
+
+Quy ước output:
+- `jobId` chính là `video-id` nội bộ của GiftVerse (không nhất thiết trùng PixVerse `video_id`).
+- `outputUrl` là relative path để frontend hiển thị trực tiếp (Next.js phục vụ từ `public/`).
 
 ### 2) Phạm vi
 #### In-scope

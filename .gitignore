@@ -17,8 +17,13 @@ node_modules/
 .next/
 out/
 
+# runtime uploads (Next public/)
+frontend/public/uploads/
+
 # production
 /build
+/dist
+backend/dist/
 
 # misc
 .DS_Store
