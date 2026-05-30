@@ -1,5 +1,25 @@
 ## Skill: Gửi — MVP Flow (Business + Tech)
 
+### 0) Thiết lập môi trường (.env)
+- Tạo `.env` bằng cách copy từ `.env.example` ở thư mục root.
+- Chỉ commit `.env.example`; không commit `.env` (chứa secret).
+
+Các biến môi trường hiện có:
+- `PORT`: cổng chạy backend (NestJS). Nếu không set thì backend sẽ dùng `3000`.
+- `DB_NAME`: tên database MySQL.
+- `DB_ENDPOINT`: host (hoặc host:port) MySQL.
+- `USER`: user đăng nhập MySQL.
+- `PASSWORD`: mật khẩu MySQL.
+
+Ví dụ:
+```
+PORT=19880
+DB_NAME=giftverse
+DB_ENDPOINT=localhost
+USER=root
+PASSWORD=change_me
+```
+
 ### 1) Mục tiêu MVP
 - Tạo và gửi gift voucher kèm video cá nhân hoá 15s (13s nội dung + 2s cuối hiển thị QR redeem trong video).
 - Trải nghiệm nhận quà “cinematic + tin cậy”: có trust gate, user gesture để phát video có âm, redeem bằng QR.
