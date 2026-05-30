@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { config } from 'dotenv';
 import { User } from './src/user/user.entity';
 import { Gift } from './src/gift/gift.entity';
+import { GiftOrder } from './src/gift-order/gift-order.entity';
 
 config();
 
@@ -15,7 +16,7 @@ export default new DataSource({
   username: configService.get<string>('DATABASE_USERNAME'),
   password: configService.get<string>('DATABASE_PASSWORD'),
   database: configService.get<string>('DATABASE_NAME'),
-  entities: [User, Gift],
+  entities: [User, Gift, GiftOrder],
   migrations: ['src/migrations/*.ts'],
   ssl: {
     rejectUnauthorized: false,

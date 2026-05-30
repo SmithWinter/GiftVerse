@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createGiftFromDraft, maskContact, saveGift, type GiftDraft } from "@/lib/giftverse";
+import { createGiftFromDraft, maskContact, saveGift, type GiftDraft, type Gift } from "@/lib/giftverse";
 
 type StepId =
   | "recipient"
@@ -24,14 +24,15 @@ const steps: Array<{ id: StepId; title: string; subtitle: string }> = [
 
 export default function GiverPage() {
   const [stepIndex, setStepIndex] = useState(0);
+  const [gifts, setGifts] = useState<Gift[]>([]);
+  const [giftsLoading, setGiftsLoading] = useState<boolean>(true);
   const [draft, setDraft] = useState<GiftDraft>(() => ({
     generationMethod: "",
     imageCount: 0,
     recipientContact: "",
     recipientName: "",
     occasion: "",
-    voucherBrand: "",
-    voucherValue: "",
+    giftId: "",
     message: "",
     mood: "",
     intent: "",
@@ -39,6 +40,21 @@ export default function GiverPage() {
     promptInput: "",
     promptFinal: "",
   }));
+
+  useEffect(() => {
+    const fetchGifts = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/gifts`);
+        const data = await response.json();
+        setGifts(data);
+      } catch (error) {
+        console.error("Failed to fetch gifts:", error);
+      } finally {
+        setGiftsLoading(false);
+      }
+    };
+    fetchGifts();
+  }, []);
 
   const [images, setImages] = useState<File[]>([]);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
@@ -249,20 +265,50 @@ export default function GiverPage() {
             )}
 
             {step.id === "gift" && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Voucher brand" required>
-                  <Input
-                    value={draft.voucherBrand}
-                    onChange={(v) => update("voucherBrand", v)}
-                    placeholder="e.g. Amazon"
-                  />
-                </Field>
-                <Field label="Voucher value" required>
-                  <Input
-                    value={draft.voucherValue}
-                    onChange={(v) => update("voucherValue", v)}
-                    placeholder="e.g. $50"
-                  />
+              <div className="grid gap-4">
+                <Field label="Chọn quà tặng" required>
+                  {giftsLoading ? (
+                    <div className="text-sm text-zinc-300">Loading gifts...</div>
+                  ) : (
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      {gifts.map((gift) => (
+                        <button
+                          key={gift.id}
+                          type="button"
+                          onClick={() => {
+                            update("giftId", String(gift.id));
+                            setDraft((prev) => ({ ...prev, selectedGift: gift }));
+                          }}
+                          className={[
+                            "rounded-2xl border p-4 text-left transition-colors overflow-hidden",
+                            draft.giftId === String(gift.id)
+                              ? "border-white/20 bg-white/10"
+                              : "border-white/10 bg-black/20 hover:bg-white/5",
+                          ].join(" ")}
+                        >
+                          {gift.imageUrl && (
+                            <div className="w-full h-32 rounded-xl overflow-hidden mb-3 border border-white/10">
+                              <img
+                                src={gift.imageUrl}
+                                alt={gift.brand}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                          <div className="text-sm font-semibold">{gift.brand}</div>
+                          <div className="mt-1 text-sm text-zinc-300">
+                            {new Intl.NumberFormat("vi-VN", {
+                              style: "currency",
+                              currency: "VND",
+                            }).format(gift.value)}
+                          </div>
+                          {gift.description && (
+                            <div className="mt-2 text-xs text-zinc-400">{gift.description}</div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </Field>
                 <Field label="Occasion" required>
                   <Select
@@ -519,8 +565,7 @@ function validateDraft(draft: GiftDraft, step: StepId): string[] {
   }
 
   if (step === "gift" || step === "preflight" || step === "prompt" || step === "generate") {
-    if (!draft.voucherBrand.trim()) out.push("Voucher brand is required.");
-    if (!draft.voucherValue.trim()) out.push("Voucher value is required.");
+    if (!draft.giftId) out.push("Voucher is required.");
     if (!draft.occasion.trim()) out.push("Occasion is required.");
   }
 
@@ -542,7 +587,13 @@ function validateDraft(draft: GiftDraft, step: StepId): string[] {
 }
 
 function formatGift(draft: GiftDraft): string {
-  const parts = [draft.voucherBrand, draft.voucherValue].filter(Boolean);
+  const gift = draft.selectedGift;
+  if (!gift) return "—";
+  const formattedValue = new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+  }).format(gift.value);
+  const parts = [gift.brand, formattedValue].filter(Boolean);
   const core = parts.join(" • ");
   return `${core || "—"}${draft.occasion ? ` • ${draft.occasion}` : ""}`;
 }
@@ -552,7 +603,10 @@ function buildPrompt(draft: GiftDraft, imageCount: number): string {
     ? `To ${draft.recipientName.trim()}`
     : `To ${maskContact(draft.recipientContact)}`;
   const occasion = draft.occasion.trim();
-  const voucher = [draft.voucherBrand.trim(), draft.voucherValue.trim()].filter(Boolean).join(" • ");
+  const gift = draft.selectedGift;
+  const voucher = gift
+    ? [gift.brand, new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(gift.value)].filter(Boolean).join(" • ")
+    : "";
   const mood = draft.mood.trim();
   const intent = draft.intent.trim();
   const detail = draft.detail.trim();

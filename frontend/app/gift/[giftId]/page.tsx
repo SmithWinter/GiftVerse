@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { demoGift, loadGift, maskContact, type Gift } from "@/lib/giftverse";
+import { loadGift, maskContact, type SentGift } from "@/lib/giftverse";
 import AnimatedContent from "@/components/AnimatedContent";
 
 type Screen = "trust" | "not-you" | "open" | "watch" | "post";
@@ -11,18 +11,14 @@ export default function GiftReceiverPage() {
   const params = useParams<{ giftId: string }>();
   const giftId = typeof params?.giftId === "string" ? params.giftId : "";
 
-  const [gift, setGift] = useState<Gift | null>(null);
+  const [gift, setGift] = useState<SentGift | null>(null);
   const [screen, setScreen] = useState<Screen>("trust");
   const [postKey, setPostKey] = useState(0);
 
   useEffect(() => {
     if (!giftId) return;
-    if (giftId === "demo") {
-      setGift(demoGift());
-      return;
-    }
     const loaded = loadGift(giftId);
-    setGift(loaded ?? demoGift());
+    setGift(loaded);
   }, [giftId]);
 
   const masked = useMemo(
@@ -222,7 +218,7 @@ function VideoStage({
   onDone,
   onExit,
 }: {
-  gift: Gift;
+  gift: SentGift;
   initialMs: number;
   onDone: () => void;
   onExit: () => void;
@@ -352,9 +348,16 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-function formatGift(gift: Gift): string {
-  const parts = [gift.voucherBrand, gift.voucherValue].filter(Boolean);
-  return parts.join(" • ") || "—";
+function formatGift(gift: SentGift): string {
+  const selectedGift = gift.selectedGift;
+  if (!selectedGift) return "—";
+  const formattedValue = new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+  }).format(selectedGift.value);
+  const parts = [selectedGift.brand, formattedValue].filter(Boolean);
+  const core = parts.join(" • ");
+  return `${core || "—"}${gift.occasion ? ` • ${gift.occasion}` : ""}`;
 }
 
 function QrCard({ code }: { code: string }) {
