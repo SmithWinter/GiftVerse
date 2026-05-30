@@ -24,7 +24,7 @@ export default function RootLayout({
           <div className="min-h-dvh">
             <GalaxyBackground />
             <CardNavbar />
-            <div className="mx-auto max-w-5xl px-4 pb-10 pt-28">{children}</div>
+            <div className="mx-auto max-w-5xl px-4 pb-10 pt-20">{children}</div>
           </div>
         </Providers>
       </body>

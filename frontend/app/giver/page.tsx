@@ -89,8 +89,7 @@ export default function GiverPage() {
     if (promptEdited) return;
     setDraft((prev) => ({ ...prev, promptFinal: buildPrompt(prev, images.length) }));
   }, [draft.promptFinal, images.length, promptEdited, step.id]);
-
-  function update<K extends keyof GiftDraft>(key: K, value: GiftDraft[K]) {
+function update<K extends keyof GiftDraft>(key: K, value: GiftDraft[K]) {
     setDraft((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -177,7 +176,7 @@ export default function GiverPage() {
                         onSelect={() => update("generationMethod", "text")}
                       />
                       <MethodCard
-                        title="Image → video"
+title="Image → video"
                         description="Generate from uploaded images. Prompt is optional but recommended."
                         selected={draft.generationMethod === "image"}
                         onSelect={() => update("generationMethod", "image")}
@@ -238,7 +237,7 @@ export default function GiverPage() {
                   <Field label="Extra prompt (optional)">
                     <TextArea
                       value={draft.promptInput}
-                      onChange={(v) => update("promptInput", v)}
+onChange={(v) => update("promptInput", v)}
                       placeholder="Optional extra guidance. Example: soft lighting, slow camera push, subtle film grain."
                     />
                   </Field>
@@ -300,7 +299,7 @@ export default function GiverPage() {
                             {new Intl.NumberFormat("vi-VN", {
                               style: "currency",
                               currency: "VND",
-                            }).format(gift.value)}
+}).format(gift.value)}
                           </div>
                           {gift.description && (
                             <div className="mt-2 text-xs text-zinc-400">{gift.description}</div>
@@ -371,7 +370,7 @@ export default function GiverPage() {
                   <div className="text-sm font-semibold">15s structure</div>
                   <div className="mt-2 grid gap-2 text-sm text-muted-foreground">
                     <Row label="Trust gate shows">{maskContact(draft.recipientContact)}</Row>
-                    <Row label="Voucher">{formatGift(draft)}</Row>
+<Row label="Voucher">{formatGift(draft)}</Row>
                     <Row label="Method">
                       {draft.generationMethod === "text"
                         ? "Text → video"
@@ -431,7 +430,7 @@ export default function GiverPage() {
                     </div>
                   </div>
                 </div>
-              </div>
+</div>
             )}
 
             {step.id === "generate" && (
@@ -487,7 +486,7 @@ export default function GiverPage() {
                         href={createdGiftId ? `/gift/${createdGiftId}` : "/gift/demo"}
                       >
                         Open receiver view
-                      </a>
+</a>
                     </div>
                   </div>
                 )}
@@ -566,7 +565,7 @@ function validateDraft(draft: GiftDraft, step: StepId): string[] {
 
   if (step === "gift" || step === "preflight" || step === "prompt" || step === "generate") {
     if (!draft.giftId) out.push("Voucher is required.");
-    if (!draft.occasion.trim()) out.push("Occasion is required.");
+if (!draft.occasion.trim()) out.push("Occasion is required.");
   }
 
   if (step === "message" || step === "preflight" || step === "prompt" || step === "generate") {
@@ -643,7 +642,7 @@ function buildPrompt(draft: GiftDraft, imageCount: number): string {
     "Constraints:",
     "- Keep typography readable (mobile-first).",
     "- Avoid cringe / overly sentimental tone.",
-    "- Maintain clean transitions into the end-card.",
+"- Maintain clean transitions into the end-card.",
   ].join("\n");
 
   const blocks = [intro];
@@ -747,7 +746,7 @@ function Input({
 }) {
   return (
     <input
-      className="h-11 w-full rounded-xl border border-white/10 bg-background/40 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/30"
+className="h-11 w-full rounded-xl border border-white/10 bg-background/40 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/30"
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
