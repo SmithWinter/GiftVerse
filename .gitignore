@@ -24,6 +24,8 @@ frontend/public/uploads/
 /build
 /dist
 backend/dist/
+backend/.video-jobs/
+skills/
 
 # misc
 .DS_Store

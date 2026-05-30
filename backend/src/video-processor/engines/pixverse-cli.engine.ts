@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
-import { mkdir, readdir, writeFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import type { VideoJob } from '../video-processor.types';
 import type { GenerateVideoResult, VideoEngine } from './video-engine';
 
@@ -37,31 +37,39 @@ function findFirstStringDeep(
   return undefined;
 }
 
-async function findFirstMp4(root: string): Promise<string | undefined> {
-  const entries = await readdir(root, { withFileTypes: true });
-  for (const entry of entries) {
-    const full = join(root, entry.name);
-    if (entry.isFile() && entry.name.toLowerCase().endsWith('.mp4'))
-      return full;
-    if (entry.isDirectory()) {
-      const nested = await findFirstMp4(full);
-      if (nested) return nested;
-    }
-  }
-  return undefined;
-}
-
 async function runJsonCommand(
-  command: string,
   args: string[],
   options: { cwd: string; env?: NodeJS.ProcessEnv },
 ): Promise<JsonValue> {
   return new Promise((resolve, reject) => {
-    console.log(`[pixverse] run: ${command} ${args.join(' ')}`);
-    const child = spawn(command, args, {
+    const isWindows = process.platform === 'win32';
+
+    // Trên Windows, nối toàn bộ lệnh làm 1 string để truyền cho shell
+    // Trên Unix-like, dùng args riêng
+    let cmd: string;
+    let cmdArgs: string[];
+
+    if (isWindows) {
+      cmd = ['pixverse', ...args]
+        .map((arg) => {
+          if (arg.includes(' ') || arg.includes('"')) {
+            return `"${arg.replace(/"/g, '\\"')}"`;
+          }
+          return arg;
+        })
+        .join(' ');
+      cmdArgs = [];
+      console.log(`[pixverse] run (Windows): ${cmd}`);
+    } else {
+      cmd = 'pixverse';
+      cmdArgs = args;
+      console.log(`[pixverse] run: ${cmd} ${cmdArgs.join(' ')}`);
+    }
+
+    const child = spawn(cmd, cmdArgs, {
       cwd: options.cwd,
       env: { ...process.env, ...options.env },
-      shell: false,
+      shell: isWindows,
       windowsHide: true,
     });
 
@@ -86,13 +94,11 @@ async function runJsonCommand(
         );
         return;
       }
-
       const trimmed = stdout.trim();
       if (!trimmed) {
         reject(new Error('pixverse cli returned empty output'));
         return;
       }
-
       try {
         resolve(JSON.parse(trimmed) as JsonValue);
       } catch {
@@ -103,9 +109,7 @@ async function runJsonCommand(
 }
 
 export class PixverseCliEngine implements VideoEngine {
-  constructor(
-    private readonly pixverseBin = process.env.PIXVERSE_BIN ?? 'pixverse',
-  ) {}
+  constructor() {}
 
   async generate(
     job: VideoJob,
@@ -117,55 +121,59 @@ export class PixverseCliEngine implements VideoEngine {
       `[pixverse] job=${job.id} ratio=${job.ratio} duration=${job.durationSeconds} promptFinalLen=${promptFinal.length}`,
     );
 
-    const requestJson = await runJsonCommand(
-      this.pixverseBin,
-      [
-        'create',
-        'video',
-        '--prompt',
-        promptFinal,
-        '--model',
-        'v6',
-        '--quality',
-        '720p',
-        '--aspect-ratio',
-        job.ratio,
-        '--no-wait',
-        '--json',
-      ],
-      { cwd: params.jobDir },
-    );
+    const args = [
+      'create',
+      'video',
+      '--prompt',
+      promptFinal,
+      '--model',
+      'v6',
+      '--quality',
+      '720p',
+      '--aspect-ratio',
+      job.ratio,
+      '--duration',
+      String(job.durationSeconds),
+      '--json',
+    ];
 
-    const videoId = this.extractVideoId(requestJson);
-    if (!videoId)
-      throw new Error(
-        'Cannot extract video_id from pixverse create video output',
+    const resultJson = await runJsonCommand(args, { cwd: params.jobDir });
+
+    if (!isRecord(resultJson)) {
+      throw new Error('pixverse cli returned invalid result');
+    }
+
+    const videoUrl = resultJson['video_url'] as string;
+    if (videoUrl) {
+      console.log(`[pixverse] completed: job=${job.id} url=${videoUrl}`);
+      return { outputUrl: videoUrl };
+    }
+
+    const videoId = this.extractVideoId(resultJson);
+    if (!videoId) {
+      await writeFile(
+        join(params.jobDir, 'pixverse.create.json'),
+        JSON.stringify(resultJson, null, 2),
+        'utf8',
       );
-    console.log(`[pixverse] created: job=${job.id} videoId=${videoId}`);
+      throw new Error(
+        'Cannot extract video_id or video_url from pixverse output',
+      );
+    }
 
-    await runJsonCommand(
-      this.pixverseBin,
-      ['task', 'wait', videoId, '--json'],
-      { cwd: params.jobDir },
-    );
-    console.log(`[pixverse] completed: job=${job.id} videoId=${videoId}`);
+    console.log(`[pixverse] waiting: job=${job.id} videoId=${videoId}`);
 
-    const downloadDir = resolve(params.jobDir, 'pixverse');
+    await runJsonCommand(['task', 'wait', videoId, '--json'], {
+      cwd: params.jobDir,
+    });
+
+    const downloadDir = join(params.jobDir, 'pixverse');
     await mkdir(downloadDir, { recursive: true });
 
     const downloadJson = await runJsonCommand(
-      this.pixverseBin,
       ['asset', 'download', videoId, '--dest', downloadDir, '--json'],
-      {
-        cwd: params.jobDir,
-      },
+      { cwd: params.jobDir },
     );
-
-    const mp4Path = await findFirstMp4(downloadDir);
-    if (mp4Path) {
-      console.log(`[pixverse] downloaded: job=${job.id} file=${mp4Path}`);
-      return { outputFilePath: mp4Path };
-    }
 
     const url = findFirstStringDeep(
       downloadJson,

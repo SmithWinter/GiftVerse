@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
-import { copyFile, mkdir, stat, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -186,50 +186,25 @@ export class VideoProcessorService {
 
   private async processJob(job: VideoJob): Promise<void> {
     try {
-      const spec = this.promptRewrite.normalizeToSpec(job.originalPrompt, {
-        prompt: job.originalPrompt,
-        ratio: job.ratio,
-        locale: job.locale,
-        durationSeconds: job.durationSeconds,
-      });
-      const promptFinal = this.promptRewrite.rewriteToPromptFinal(spec, {
-        prompt: job.originalPrompt,
-        ratio: job.ratio,
-        locale: job.locale,
-        durationSeconds: job.durationSeconds,
-      });
+      const promptFinal = job.originalPrompt;
 
       this.updateJob(job.id, {
-        status: 'REWRITE_DONE',
-        videoSpec: spec,
+        status: 'GENERATING',
         promptFinal,
       });
-      this.logger.log(
-        `rewrite: jobId=${job.id} promptLen=${job.originalPrompt.length} promptFinalLen=${promptFinal.length}`,
-      );
 
       const jobsRoot = this.resolveJobsRoot();
       const jobDir = resolve(jobsRoot, job.id);
       await mkdir(jobDir, { recursive: true });
 
-      const projectYaml = this.promptRewrite.toProjectYaml({
-        projectSlug: `giftverse-${job.id}`,
-        ratio: job.ratio,
-        locale: job.locale,
-        durationSeconds: job.durationSeconds,
-        promptFinal,
-      });
-      const projectYamlPath = join(jobDir, 'project.yaml');
-      await writeFile(projectYamlPath, projectYaml, 'utf8');
-      this.logger.log(`job artifacts: jobId=${job.id} dir=${jobDir}`);
-
       const engine = this.resolveEngine();
-      this.updateJob(job.id, { status: this.engineStartStatus(engine) });
 
-      const result = await engine.generate(this.jobs.get(job.id) ?? job, {
-        jobDir,
-        projectYamlPath,
-      });
+      const result = await engine.generate(
+        { ...job, promptFinal },
+        {
+          jobDir,
+        },
+      );
 
       this.updateJob(job.id, { status: 'UPLOADING' });
 
