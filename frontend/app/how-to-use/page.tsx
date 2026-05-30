@@ -73,7 +73,7 @@ export default function HowToUsePage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6 pt-24">
       <header className="text-center space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight">How to use GiftVerse</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-giftverse-gradient">How to use GiftVerse</h1>
         <p className="text-muted-foreground">
           A quick walkthrough of sending a gift with a personalized 15-second video.
         </p>
@@ -86,7 +86,7 @@ export default function HowToUsePage() {
             className="rounded-2xl border border-border/50 bg-card/40 p-6 backdrop-blur"
           >
             <div className="space-y-1">
-              <h3 className="text-lg font-semibold">{step.title}</h3>
+              <h3 className="text-lg font-semibold text-giftverse-gradient">{step.title}</h3>
               {step.content}
             </div>
           </div>

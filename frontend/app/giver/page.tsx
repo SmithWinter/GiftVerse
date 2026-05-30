@@ -392,7 +392,7 @@ export default function GiverPage() {
               <div className="grid gap-4">
                 <div className="rounded-xl border border-border/60 bg-background/30 p-4">
                   <div className="flex items-center justify-between gap-4">
-                    <div className="text-sm font-semibold">Generate video</div>
+                    <div className="text-sm font-semibold text-giftverse-gradient">Generate video</div>
                     <div className="text-xs text-muted-foreground">Target: 15–60s</div>
                   </div>
                   <div className="mt-2 text-xs text-muted-foreground">
@@ -413,7 +413,7 @@ export default function GiverPage() {
 
                 {createdGiftId && createdRedeemCode && (
                   <div className="rounded-xl border border-white/10 bg-black/30 p-4">
-                    <div className="text-sm font-semibold">Send link (mock)</div>
+                    <div className="text-sm font-semibold text-giftverse-gradient">Send link (mock)</div>
                     <div className="mt-2 grid gap-2 text-sm text-zinc-300">
                       <Row label="To">{maskContact(draft.recipientContact)}</Row>
                       <Row label="Redeem code">{createdRedeemCode}</Row>
@@ -424,7 +424,7 @@ export default function GiverPage() {
                     <div className="mt-4 flex flex-col gap-3 sm:flex-row">
                       <button
                         type="button"
-                        className="inline-flex h-11 items-center justify-center rounded-xl bg-white px-4 text-sm font-semibold text-zinc-950 hover:bg-zinc-200"
+                        className="inline-flex h-11 items-center justify-center rounded-xl bg-giftverse-gradient px-4 text-sm font-semibold text-white hover:opacity-90"
                         onClick={async () => {
                           if (!shareUrl) return;
                           try {
@@ -451,7 +451,7 @@ export default function GiverPage() {
 
           {errors.length > 0 && (
             <div className="mt-6 rounded-xl border border-amber-300/20 bg-amber-300/10 p-4 text-sm text-amber-100">
-              <div className="font-semibold">Fix before continuing</div>
+              <div className="font-semibold text-giftverse-gradient">Fix before continuing</div>
               <ul className="mt-2 list-disc space-y-1 pl-5">
                 {errors.map((e) => (
                   <li key={e}>{e}</li>
@@ -473,7 +473,7 @@ export default function GiverPage() {
             {step.id === "generate" ? (
               <button
                 type="button"
-                className="inline-flex h-11 items-center justify-center rounded-xl bg-white px-4 text-sm font-semibold text-zinc-950 hover:bg-zinc-200 disabled:opacity-50"
+                className="inline-flex h-11 items-center justify-center rounded-xl bg-giftverse-gradient px-4 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
                 onClick={generateAndSend}
                 disabled={isGenerating || createdGiftId !== null || validateDraft(draft, "generate").length > 0}
               >
@@ -482,7 +482,7 @@ export default function GiverPage() {
             ) : (
               <button
                 type="button"
-                className="inline-flex h-11 items-center justify-center rounded-xl bg-white px-4 text-sm font-semibold text-zinc-950 hover:bg-zinc-200 disabled:opacity-50"
+                className="inline-flex h-11 items-center justify-center rounded-xl bg-giftverse-gradient px-4 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
                 onClick={next}
                 disabled={!canGoNext}
               >
@@ -619,7 +619,7 @@ function Stepper({ currentIndex }: { currentIndex: number }) {
             <span
               className={[
                 "inline-flex size-5 items-center justify-center rounded-full text-[11px]",
-                i <= currentIndex ? "bg-white text-zinc-950" : "bg-white/10 text-zinc-300",
+                i <= currentIndex ? "bg-giftverse-gradient text-white" : "bg-white/10 text-zinc-300",
               ].join(" ")}
             >
               {i + 1}
@@ -648,14 +648,15 @@ function MethodCard({
       type="button"
       onClick={onSelect}
       className={[
-        "rounded-2xl border p-4 text-left transition-colors",
+        "rounded-2xl border p-4 text-left transition-all",
         selected
-          ? "border-white/20 bg-white/10"
+          ? "border-white/30 bg-white/10"
           : "border-white/10 bg-black/20 hover:bg-white/5",
       ].join(" ")}
     >
-      <div className="text-sm font-semibold">{title}</div>
+      <div className={["text-sm font-semibold", selected ? "text-giftverse-gradient" : "text-white"].join(" ")}>{title}</div>
       <div className="mt-1 text-sm text-zinc-300">{description}</div>
+      {selected && <div className="mt-2 h-1 w-full rounded-full bg-giftverse-gradient" />}
     </button>
   );
 }
@@ -673,7 +674,7 @@ function Field({
     <label className="grid gap-2">
       <div className="flex items-center justify-between gap-4">
         <div className="text-sm font-semibold">
-          {label} {required ? <span className="text-amber-200">*</span> : null}
+          {label} {required ? <span className="text-giftverse-gradient">*</span> : null}
         </div>
       </div>
       {children}
@@ -692,7 +693,7 @@ function Input({
 }) {
   return (
     <input
-      className="h-11 w-full rounded-xl border border-input bg-background/40 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+      className="h-11 w-full rounded-xl border border-white/10 bg-background/40 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/30"
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
@@ -711,7 +712,7 @@ function TextArea({
 }) {
   return (
     <textarea
-      className="min-h-[120px] w-full resize-none rounded-xl border border-input bg-background/40 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+      className="min-h-[120px] w-full resize-none rounded-xl border border-white/10 bg-background/40 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/30"
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
@@ -733,7 +734,7 @@ function Select({
   return (
     <select
       className={[
-        "h-11 w-full rounded-xl border border-input bg-background/40 px-3 text-sm focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20",
+        "h-11 w-full rounded-xl border border-white/10 bg-background/40 px-3 text-sm focus:border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500/30",
         value ? "text-foreground" : "text-muted-foreground",
       ].join(" ")}
       value={value}
@@ -753,7 +754,7 @@ function Progress({ value }: { value: number }) {
   return (
     <div className="h-2 w-full overflow-hidden rounded-full bg-muted/30">
       <div
-        className="h-full rounded-full bg-primary transition-[width]"
+        className="h-full rounded-full bg-giftverse-gradient transition-[width]"
         style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
       />
     </div>

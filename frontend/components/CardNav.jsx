@@ -212,17 +212,17 @@ const CardNav = ({
 
           {ctaHref ? (
             <a
-              className="card-nav-cta-button"
+              className="card-nav-cta-button bg-giftverse-gradient"
               href={ctaHref}
-              style={{ backgroundColor: buttonBgColor, color: buttonTextColor }}
+              style={{ color: "#fff" }}
             >
               {ctaLabel}
             </a>
           ) : (
             <button
               type="button"
-              className="card-nav-cta-button"
-              style={{ backgroundColor: buttonBgColor, color: buttonTextColor }}
+              className="card-nav-cta-button bg-giftverse-gradient"
+              style={{ color: "#fff" }}
             >
               {ctaLabel}
             </button>

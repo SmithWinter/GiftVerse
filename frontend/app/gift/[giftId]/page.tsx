@@ -44,7 +44,7 @@ export default function GiftReceiverPage() {
         <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Receiver
         </div>
-        <h1 className="text-2xl font-semibold tracking-tight">You received a gift</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-giftverse-gradient">You received a gift</h1>
         <div className="text-sm text-muted-foreground">
           Gift for <span className="text-foreground">{masked}</span>
         </div>
@@ -52,14 +52,14 @@ export default function GiftReceiverPage() {
 
       {screen === "trust" && (
         <Card>
-          <div className="text-sm font-semibold">Trust gate</div>
+          <div className="text-sm font-semibold text-giftverse-gradient">Trust gate</div>
           <div className="mt-2 text-sm text-muted-foreground">
             This gift was sent to <span className="text-foreground">{masked}</span>. Is that you?
           </div>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <button
               type="button"
-              className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+              className="inline-flex h-11 items-center justify-center rounded-xl bg-giftverse-gradient px-4 text-sm font-semibold text-white hover:opacity-90"
               onClick={() => setScreen("open")}
             >
               Yes, that’s me
@@ -77,14 +77,14 @@ export default function GiftReceiverPage() {
 
       {screen === "not-you" && (
         <Card>
-          <div className="text-sm font-semibold">Protected</div>
+          <div className="text-sm font-semibold text-giftverse-gradient">Protected</div>
           <div className="mt-2 text-sm text-muted-foreground">
             For your safety, we can’t show the video or redeem QR unless you confirm you’re the intended recipient.
           </div>
           <div className="mt-6">
             <button
               type="button"
-              className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+              className="inline-flex h-11 items-center justify-center rounded-xl bg-giftverse-gradient px-4 text-sm font-semibold text-white hover:opacity-90"
               onClick={() => setScreen("trust")}
             >
               Back to trust gate
@@ -96,7 +96,7 @@ export default function GiftReceiverPage() {
       {screen === "open" && (
         <div className="grid gap-4">
           <Card>
-            <div className="text-sm font-semibold">Gift preview</div>
+            <div className="text-sm font-semibold text-giftverse-gradient">Gift preview</div>
             <div className="mt-3 grid gap-2 text-sm text-muted-foreground">
               <Row label="Occasion">{gift.occasion || "—"}</Row>
               <Row label="Voucher">{formatGift(gift)}</Row>
@@ -108,14 +108,14 @@ export default function GiftReceiverPage() {
           </Card>
 
           <Card>
-            <div className="text-sm font-semibold">Open gift</div>
+            <div className="text-sm font-semibold text-giftverse-gradient">Open gift</div>
             <div className="mt-2 text-sm text-muted-foreground">
               Tap to start the 15s video. The redeem QR will appear after the video finishes.
             </div>
             <div className="mt-6">
               <button
                 type="button"
-                className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                className="inline-flex h-11 items-center justify-center rounded-xl bg-giftverse-gradient px-4 text-sm font-semibold text-white hover:opacity-90"
                 onClick={() => {
                   setScreen("watch");
                 }}
@@ -152,7 +152,7 @@ export default function GiftReceiverPage() {
             ease="back.out(1.7)"
           >
             <Card>
-              <div className="text-sm font-semibold">Redeem</div>
+              <div className="text-sm font-semibold text-giftverse-gradient">Redeem</div>
               <div className="mt-2 text-sm text-muted-foreground">
                 Scan the QR or use the code below.
               </div>
@@ -161,7 +161,7 @@ export default function GiftReceiverPage() {
                 <div className="grid gap-3">
                   <button
                     type="button"
-                    className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                    className="inline-flex h-11 items-center justify-center rounded-xl bg-giftverse-gradient px-4 text-sm font-semibold text-white hover:opacity-90"
                     onClick={async () => {
                       try {
                         await navigator.clipboard.writeText(gift.redeemCode);
@@ -194,7 +194,7 @@ export default function GiftReceiverPage() {
           </AnimatedContent>
 
           <Card>
-            <div className="text-sm font-semibold">Back</div>
+            <div className="text-sm font-semibold text-giftverse-gradient">Back</div>
             <div className="mt-2 flex flex-col gap-3 sm:flex-row">
               <a
                 className="inline-flex h-11 items-center justify-center rounded-xl border border-border/60 bg-background/30 px-4 text-sm font-semibold text-foreground hover:bg-muted/40"
@@ -259,7 +259,7 @@ function VideoStage({
     <div className="grid gap-4">
       <Card>
         <div className="flex items-center justify-between gap-4">
-          <div className="text-sm font-semibold">15s video</div>
+          <div className="text-sm font-semibold text-giftverse-gradient">15s video</div>
           <div className="text-xs text-muted-foreground">{formatTime(ms)} / 15s</div>
         </div>
         <div className="mt-3">
@@ -297,7 +297,7 @@ function VideoStage({
           </button>
           <button
             type="button"
-            className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+            className="inline-flex h-11 items-center justify-center rounded-xl bg-giftverse-gradient px-4 text-sm font-semibold text-white hover:opacity-90"
             onClick={() => {
               setMs(0);
               setPlaying(true);
@@ -322,7 +322,7 @@ function Progress({ value }: { value: number }) {
   return (
     <div className="h-2 w-full overflow-hidden rounded-full bg-muted/30">
       <div
-        className="h-full rounded-full bg-primary transition-[width]"
+        className="h-full rounded-full bg-giftverse-gradient transition-[width]"
         style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
       />
     </div>
