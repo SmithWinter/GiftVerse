@@ -118,10 +118,10 @@ export class PixverseCliEngine implements VideoEngine {
     const promptFinal = job.promptFinal;
     if (!promptFinal) throw new Error('prompt_final is missing');
     console.log(
-      `[pixverse] job=${job.id} ratio=${job.ratio} duration=${job.durationSeconds} promptFinalLen=${promptFinal.length}`,
+      `[pixverse] job=${job.id} ratio=${job.ratio} duration=${job.durationSeconds} promptFinalLen=${promptFinal.length} imageUrl=${job.imageUrl || 'none'}`,
     );
 
-    const args = [
+    const args: string[] = [
       'create',
       'video',
       '--prompt',
@@ -136,6 +136,10 @@ export class PixverseCliEngine implements VideoEngine {
       String(job.durationSeconds),
       '--json',
     ];
+
+    if (job.imageUrl) {
+      args.push('--image', job.imageUrl);
+    }
 
     const resultJson = await runJsonCommand(args, { cwd: params.jobDir });
 

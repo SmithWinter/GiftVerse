@@ -77,6 +77,7 @@ export class VideoProcessorService {
       ratio,
       locale,
       durationSeconds,
+      imageUrl: request.imageUrl,
     };
 
     this.logger.log(

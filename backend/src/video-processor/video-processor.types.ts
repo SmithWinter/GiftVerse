@@ -27,6 +27,7 @@ export type CreateVideoProcessorRequest = {
   locale?: string;
   durationSeconds?: number;
   dryRun?: boolean;
+  imageUrl?: string; // Đường dẫn URL tới ảnh (hoặc file path)
 };
 
 export type VideoJob = {
@@ -41,6 +42,8 @@ export type VideoJob = {
   ratio: AspectRatio;
   locale: string;
   durationSeconds: number;
+  imageUrl?: string;
+  progress?: number; // 0-100
   outputFilePath?: string;
   outputUrl?: string;
   error?: string;
