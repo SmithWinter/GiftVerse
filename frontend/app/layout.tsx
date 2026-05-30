@@ -4,6 +4,7 @@ import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { GalaxyBackground } from "@/components/GalaxyBackground";
 import { CardNavbar } from "@/components/CardNavbar";
+import { Providers } from "@/components/Providers";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -19,11 +20,13 @@ export default function RootLayout({
   return (
     <html lang="en" className={cn("dark font-sans", geist.variable)}>
       <body className="min-h-dvh bg-background text-foreground antialiased">
-        <div className="min-h-dvh">
-          <GalaxyBackground />
-          <CardNavbar />
-          <div className="mx-auto max-w-5xl px-4 pb-10 pt-28">{children}</div>
-        </div>
+        <Providers>
+          <div className="min-h-dvh">
+            <GalaxyBackground />
+            <CardNavbar />
+            <div className="mx-auto max-w-5xl px-4 pb-10 pt-28">{children}</div>
+          </div>
+        </Providers>
       </body>
     </html>
   );
