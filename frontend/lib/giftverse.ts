@@ -1,20 +1,31 @@
+// Gift từ BE
+export type Gift = {
+  id: number;
+  brand: string;
+  value: number;
+  description?: string;
+  imageUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type GiftDraft = {
   generationMethod: "text" | "image" | "";
   imageCount: number;
   recipientContact: string;
   recipientName: string;
   occasion: string;
-  voucherBrand: string;
-  voucherValue: string;
+  giftId: string; // Thay thế voucherBrand/voucherValue
   message: string;
   mood: string;
   intent: string;
   detail: string;
   promptInput: string;
   promptFinal: string;
+  selectedGift?: Gift; // Lưu trữ gift đã chọn để dùng cho format/buildPrompt
 };
 
-export type Gift = GiftDraft & {
+export type SentGift = GiftDraft & {
   id: string;
   redeemCode: string;
   createdAtIso: string;
@@ -40,7 +51,7 @@ export function maskContact(contact: string): string {
   return "****";
 }
 
-export function createGiftFromDraft(draft: GiftDraft): Gift {
+export function createGiftFromDraft(draft: GiftDraft): SentGift {
   const id = randomId();
   const redeemCode = `GV-${randomCode(8)}`;
   return {
@@ -51,49 +62,27 @@ export function createGiftFromDraft(draft: GiftDraft): Gift {
   };
 }
 
-export function saveGift(gift: Gift): void {
+export function saveGift(gift: SentGift): void {
   if (typeof window === "undefined") return;
   const all = loadAllGifts();
   all[gift.id] = gift;
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
 }
 
-export function loadGift(id: string): Gift | null {
+export function loadGift(id: string): SentGift | null {
   if (typeof window === "undefined") return null;
   const all = loadAllGifts();
   return all[id] ?? null;
 }
 
-export function demoGift(): Gift {
-  return {
-    id: "demo",
-    redeemCode: "GV-DEMO-2026",
-    createdAtIso: new Date().toISOString(),
-    generationMethod: "text",
-    imageCount: 2,
-    recipientContact: "someone@example.com",
-    recipientName: "Alex",
-    occasion: "Birthday",
-    voucherBrand: "GiftVerse",
-    voucherValue: "$50",
-    message: "Wishing you a year full of small wins and big smiles.",
-    mood: "Warm cinematic",
-    intent: "Make them feel celebrated",
-    detail: "A short personal moment: “Thanks for always being there.”",
-    promptInput: "Soft lighting, warm colors, subtle film grain.",
-    promptFinal:
-      "Create a 15s vertical cinematic gift video.\n\nStructure:\n- 0–2s: Title card (To Alex • Birthday)\n- 2–9s: Mood sequence (Warm cinematic)\n- 9–13s: Message highlight (Wishing you a year full of small wins and big smiles.)\n- 13–15s: End-card QR reserved (do not add extra text over QR)\n\nVisual direction:\n- Use uploaded images as visual reference.\n- Soft lighting, warm colors, subtle film grain.\n\nConstraints:\n- Keep typography readable.\n- Avoid cringe / over-sentimental tone.\n- Maintain high contrast for the end-card.",
-  };
-}
-
-function loadAllGifts(): Record<string, Gift> {
+function loadAllGifts(): Record<string, SentGift> {
   if (typeof window === "undefined") return {};
   const raw = window.localStorage.getItem(STORAGE_KEY);
   if (!raw) return {};
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return {};
-    return parsed as Record<string, Gift>;
+    return parsed as Record<string, SentGift>;
   } catch {
     return {};
   }

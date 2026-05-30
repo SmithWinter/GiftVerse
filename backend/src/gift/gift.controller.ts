@@ -1,18 +1,40 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { GiftService } from './gift.service';
 import { CreateGiftDto } from './dto/create-gift.dto';
 import { UpdateGiftDto } from './dto/update-gift.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 @ApiTags('gifts')
 @Controller('gifts')
 export class GiftController {
-  constructor(private readonly giftService: GiftService) {}
+  constructor(
+    private readonly giftService: GiftService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
+
+  @Post('upload')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @ApiOperation({ summary: 'Upload image' })
+  @ApiResponse({ status: 200, description: 'Image uploaded successfully' })
+  async uploadImage(@UploadedFile() file: Express.Multer.File) {
+    return this.cloudinaryService.uploadImage(file);
+  }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new gift' })
   @ApiResponse({ status: 201, description: 'Gift created successfully' })
   create(@Body() createGiftDto: CreateGiftDto) {
@@ -35,8 +57,6 @@ export class GiftController {
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Update a gift' })
   @ApiResponse({ status: 200, description: 'Gift updated successfully' })
   update(@Param('id') id: string, @Body() updateGiftDto: UpdateGiftDto) {
@@ -44,8 +64,6 @@ export class GiftController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete a gift' })
   @ApiResponse({ status: 200, description: 'Gift deleted successfully' })
   remove(@Param('id') id: string) {
