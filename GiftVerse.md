@@ -25,6 +25,36 @@ PASSWORD=change_me
 - Trải nghiệm nhận quà “cinematic + tin cậy”: có trust gate, user gesture để phát video có âm, redeem bằng QR.
 - Chứng minh 3 giá trị: wow moment, kiểm soát chất lượng AI (director control), delivery & trust.
 
+### 1.1) Video Processor (PixVerseCLI + Pipeline + Prompt Rewrite)
+Mục tiêu kỹ thuật: biến input thô của người dùng thành output video ổn định và có thể debug được.
+
+Nguyên tắc:
+- Prompt người dùng và prompt chạy máy là 2 tầng khác nhau: luôn lưu cả hai.
+- Tạo video là tác vụ dài: dùng job async (tránh request timeout), có thể poll hoặc push status.
+- Tối ưu “ổn định” trước “đẹp”: pipeline có validate/plan, có fallback khi fail.
+
+Luồng xử lý đề xuất (Server):
+1) Nhận `prompt` thô từ client.
+2) TRAE chuẩn hoá prompt → `VideoSpec` (cấu trúc: subject/setting/action/camera/mood/constraints).
+3) TRAE rewrite `VideoSpec` → `prompt_final` (prompt cho PixVerse) + `constraints`/`negative`.
+4) Render config cho pipeline (`project.yaml`) theo chuẩn `pixverse-character-pipeline`.
+5) Chạy pipeline: `validate` → `plan` → `run` (PixVerse generation → Remotion render MP4).
+6) Upload MP4 lên storage, trả về `video_url`.
+
+Endpoints tối thiểu:
+- `POST /video-processor` → `202 { job_id }` (body: `prompt`, optional: `ratio`, `locale`, `duration`, `dry_run`)
+- `GET /video-processor/:job_id` → `{ status, progress?, video_url?, error? }`
+- (tuỳ chọn) `POST /video-processor/:job_id/cancel`
+- (tuỳ chọn) `POST /video-processor/dry-run` → trả `video_spec`, `prompt_final`, `project_yaml_preview` (không đốt credit)
+
+Trạng thái job (gợi ý):
+- `QUEUED` → `REWRITE_DONE` → `PIPELINE_VALIDATED` → `GENERATING` → `RENDERING` → `UPLOADING` → `SUCCEEDED`
+- `FAILED` (kèm `error_code`), `CANCELED`
+
+Fail-safe gợi ý:
+- Nếu generation fail: fallback về video template theo dịp (vẫn giữ end-card QR), hoặc giảm quality/model để retry.
+- Nếu render fail: vẫn trả về asset video thô từ PixVerse (không Remotion) nếu có.
+
 ### 2) Phạm vi
 #### In-scope
 - Luồng người tặng: nhập người nhận (email/phone), chọn voucher/dịp, viết lời chúc, chọn mood/intent, tạo video, gửi link.
