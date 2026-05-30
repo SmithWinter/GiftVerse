@@ -4,6 +4,7 @@ const typeorm_1 = require("typeorm");
 const config_1 = require("@nestjs/config");
 const dotenv_1 = require("dotenv");
 const user_entity_1 = require("./src/user/user.entity");
+const gift_entity_1 = require("./src/gift/gift.entity");
 (0, dotenv_1.config)();
 const configService = new config_1.ConfigService();
 exports.default = new typeorm_1.DataSource({
@@ -13,7 +14,7 @@ exports.default = new typeorm_1.DataSource({
     username: configService.get('DATABASE_USERNAME'),
     password: configService.get('DATABASE_PASSWORD'),
     database: configService.get('DATABASE_NAME'),
-    entities: [user_entity_1.User],
+    entities: [user_entity_1.User, gift_entity_1.Gift],
     migrations: ['src/migrations/*.ts'],
     ssl: {
         rejectUnauthorized: false,

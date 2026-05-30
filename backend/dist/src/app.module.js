@@ -12,7 +12,10 @@ const config_1 = require("@nestjs/config");
 const typeorm_1 = require("@nestjs/typeorm");
 const user_module_1 = require("./user/user.module");
 const auth_module_1 = require("./auth/auth.module");
+const gift_module_1 = require("./gift/gift.module");
+const cloudinary_module_1 = require("./cloudinary/cloudinary.module");
 const user_entity_1 = require("./user/user.entity");
+const gift_entity_1 = require("./gift/gift.entity");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -31,7 +34,7 @@ exports.AppModule = AppModule = __decorate([
                     username: configService.get('DATABASE_USERNAME'),
                     password: configService.get('DATABASE_PASSWORD'),
                     database: configService.get('DATABASE_NAME'),
-                    entities: [user_entity_1.User],
+                    entities: [user_entity_1.User, gift_entity_1.Gift],
                     synchronize: false,
                     migrations: ['dist/migrations/*.js'],
                     ssl: {
@@ -42,6 +45,8 @@ exports.AppModule = AppModule = __decorate([
             }),
             user_module_1.UserModule,
             auth_module_1.AuthModule,
+            gift_module_1.GiftModule,
+            cloudinary_module_1.CloudinaryModule,
         ],
         controllers: [],
         providers: [],
